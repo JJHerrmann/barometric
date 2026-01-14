@@ -4,6 +4,77 @@
 
 @layer base {
   body {
-    @apply bg-black text-slate-100 antialiased;
+    @apply antialiased;
   }
+}
+
+:root {
+  /* Ancient Dawn (light) */
+  --bg: #fbf6ea;
+  --bg2: #f1e6d2;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface2: rgba(255, 255, 255, 0.52);
+  --text: #1a1a1a;
+  --muted: rgba(26, 26, 26, 0.68);
+  --border: rgba(26, 26, 26, 0.12);
+
+  /* accent hints */
+  --accent: #0b6cff;
+  --accent2: #7b2cff;
+
+  /* background gradient tokens used by dashboard */
+  --bg-gradient: radial-gradient(
+      1200px 900px at 20% 10%,
+      rgba(11, 108, 255, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(1100px 800px at 90% 30%, rgba(123, 44, 255, 0.14), transparent 62%),
+    linear-gradient(180deg, var(--bg), var(--bg2));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Future Dusk (dark) */
+    --bg: #070a12;
+    --bg2: #0b1222;
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface2: rgba(255, 255, 255, 0.04);
+    --text: #e9eefc;
+    --muted: rgba(233, 238, 252, 0.72);
+    --border: rgba(233, 238, 252, 0.14);
+
+    --accent: #4aa3ff;
+    --accent2: #d79bff;
+
+    --bg-gradient: radial-gradient(
+        1200px 900px at 20% 10%,
+        rgba(74, 163, 255, 0.2),
+        transparent 60%
+      ),
+      radial-gradient(1100px 800px at 90% 30%, rgba(215, 155, 255, 0.16), transparent 62%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+  }
+}
+
+/* Optional manual override hook (later) */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--bg-gradient);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+}
+
+hr,
+.border-default {
+  border-color: var(--border);
 }

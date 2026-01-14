@@ -255,9 +255,9 @@ function riskFromDeltas({
 }
 
 function toneClasses(tone: TrendTone) {
-  if (tone === "danger") return "bg-red-600/90 text-white";
-  if (tone === "warn") return "bg-yellow-500/90 text-black";
-  return "bg-emerald-600/90 text-white";
+  if (tone === "danger") return "bg-red-600/90 text-[var(--text)]";
+  if (tone === "warn") return "bg-yellow-500/90 text-[var(--text)]";
+  return "bg-emerald-600/90 text-[var(--text)]";
 }
 
 function softToneBorder(tone: TrendTone) {
@@ -281,16 +281,24 @@ function MetricPill({
         <TooltipTrigger asChild>
           <div
             className={
-              "flex items-center justify-between rounded-xl border border-white/18 bg-white/10 backdrop-blur px-3 py-2 " +
+              "flex items-center justify-between rounded-xl border backdrop-blur px-3 py-2 " +
               "shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06)]"
             }
+            style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
           >
-            <div className="text-xs text-slate-200/90">{label}</div>
-            <div className="font-semibold tabular-nums text-slate-50">{value}</div>
+            <div className="text-xs" style={{ color: "var(--muted)" }}>
+              {label}
+            </div>
+            <div className="font-semibold tabular-nums" style={{ color: "var(--text)" }}>
+              {value}
+            </div>
           </div>
         </TooltipTrigger>
         {hint ? (
-          <TooltipContent className="max-w-xs border-white/15 bg-black/70 text-slate-100">
+          <TooltipContent
+            className="max-w-xs"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+          >
             {hint}
           </TooltipContent>
         ) : null}
@@ -311,11 +319,18 @@ function BigCardHeader({
   return (
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="text-sm text-slate-200/85">{title}</div>
-        <div className="text-2xl font-semibold leading-tight text-slate-50">{subtitle}</div>
+        <div className="text-sm" style={{ color: "var(--muted)" }}>
+          {title}
+        </div>
+        <div className="text-2xl font-semibold leading-tight" style={{ color: "var(--text)" }}>
+          {subtitle}
+        </div>
       </div>
-      <div className="rounded-2xl bg-white/5 border border-white/12 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-        <Icon className="h-5 w-5 text-slate-100" />
+      <div
+        className="rounded-2xl border p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+      >
+        <Icon className="h-5 w-5" style={{ color: "var(--text)" }} />
       </div>
     </div>
   );
@@ -525,13 +540,11 @@ export default function BarometricDashboard() {
     ].filter((e) => typeof e.t === "number");
   }, [series]);
 
-  const bg =
-    "min-h-screen w-full bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.20),_transparent_55%)," +
-    "radial-gradient(ellipse_at_bottom,_rgba(168,85,247,0.16),_transparent_60%)," +
-    "linear-gradient(180deg,_#030014_0%,_#07001f_28%,_#02010a_100%)]";
-
   return (
-    <div className={`${bg} p-4 md:p-6 text-slate-100`}>
+    <div
+      className="min-h-screen w-full p-4 md:p-6"
+      style={{ background: "var(--bg-gradient)", color: "var(--text)" }}
+    >
       <div className="pointer-events-none fixed inset-0">
         <div
           className="absolute inset-0 opacity-[0.12]"
@@ -558,36 +571,50 @@ export default function BarometricDashboard() {
 
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm text-slate-200/80">{stationCaption}</div>
-            <div className="text-2xl font-semibold text-slate-50">Barometric Dashboard</div>
-            <div className="text-xs text-slate-200/65">Mock data. Replace with METAR or sensor feed.</div>
+            <div className="text-sm" style={{ color: "var(--muted)" }}>
+              {stationCaption}
+            </div>
+            <div className="text-2xl font-semibold" style={{ color: "var(--text)" }}>
+              Barometric Dashboard
+            </div>
+            <div className="text-xs" style={{ color: "var(--muted)" }}>
+              Mock data. Replace with METAR or sensor feed.
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/12 bg-white/6 backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <div className="text-xs text-slate-200/85">Station</div>
+            <div
+              className="flex flex-wrap items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
+              <div className="text-xs" style={{ color: "var(--muted)" }}>
+                Station
+              </div>
               <select
                 value={stationId}
                 onChange={(e) => void applyStation(e.target.value)}
-                className="h-8 rounded-xl border border-white/14 bg-black/20 px-2 text-xs text-slate-50 outline-none"
+                className="h-8 rounded-xl border px-2 text-xs outline-none"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
               >
                 {stations.map((s) => (
-                  <option key={s.id} value={s.id} className="bg-[#050312]">
+                  <option key={s.id} value={s.id} className="bg-[var(--bg)] text-[var(--text)]">
                     {s.id}
                   </option>
                 ))}
               </select>
-              <div className="h-5 w-px bg-white/10" />
+              <div className="h-5 w-px" style={{ background: "var(--border)" }} />
               <input
                 value={customStation}
                 onChange={(e) => setCustomStation(e.target.value)}
                 placeholder="Custom ICAO (e.g., KAVL)"
-                className="h-8 w-44 rounded-xl border border-white/14 bg-black/20 px-2 text-xs text-slate-50 placeholder:text-slate-200/45 outline-none"
+                className="h-8 w-44 rounded-xl border px-2 text-xs placeholder:text-[var(--muted)] outline-none"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
               />
               <Button
                 variant="outline"
                 disabled={stationLoadState === "loading"}
-                className="h-8 rounded-xl border-white/25 bg-white/10 px-3 text-xs text-slate-50 hover:bg-white/18 disabled:opacity-60"
+                className="h-8 rounded-xl border px-3 text-xs hover:opacity-90 disabled:opacity-60"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
                 onClick={() => void applyStation(customStation)}
               >
                 {stationLoadState === "loading" ? "Loading..." : "Load"}
@@ -595,7 +622,10 @@ export default function BarometricDashboard() {
             </div>
 
             <Tabs value={range} onValueChange={(v) => setRange(v as typeof range)}>
-              <TabsList className="rounded-2xl bg-white/6 border border-white/10">
+              <TabsList
+                className="rounded-2xl border"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+              >
                 <TabsTrigger value="6h" className="rounded-xl">
                   6h
                 </TabsTrigger>
@@ -608,26 +638,41 @@ export default function BarometricDashboard() {
               </TabsList>
             </Tabs>
 
-            <div className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <span className="text-xs text-slate-200/85">Pressure: inHg (hPa)</span>
-              <span className="text-xs text-slate-200/85">Temp: F (C)</span>
+            <div
+              className="flex items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Pressure: inHg (hPa)
+              </span>
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Temp: F (C)
+              </span>
             </div>
 
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    <Activity className="h-4 w-4 text-slate-100" />
+                  <div
+                    className="flex items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                  >
+                    <Activity className="h-4 w-4" style={{ color: "var(--text)" }} />
                     <div className="text-xs">
-                      <div className="text-slate-200/80">Sensitivity</div>
-                      <div className="font-semibold text-slate-50">{sensitivity[0]}%</div>
+                      <div style={{ color: "var(--muted)" }}>Sensitivity</div>
+                      <div className="font-semibold" style={{ color: "var(--text)" }}>
+                        {sensitivity[0]}%
+                      </div>
                     </div>
                     <div className="w-36">
                       <Slider value={sensitivity} onValueChange={setSensitivity} min={20} max={100} step={1} />
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-sm border-white/15 bg-black/70 text-slate-100">
+                <TooltipContent
+                  className="max-w-sm"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                >
                   Demo knob: scales deltas and rate before risk scoring. Real use should tune thresholds instead.
                 </TooltipContent>
               </Tooltip>
@@ -639,7 +684,8 @@ export default function BarometricDashboard() {
           <Card
             className={`md:col-span-2 rounded-3xl border ${softToneBorder(
               risk.tone
-            )} bg-white/6 backdrop-blur shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]`}
+            )} backdrop-blur shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]`}
+            style={{ background: "var(--surface)" }}
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -648,33 +694,46 @@ export default function BarometricDashboard() {
                     <Badge className={`rounded-xl ${toneClasses(risk.tone)}`}>
                       Migraine Risk: {risk.label}
                     </Badge>
-                    <Badge variant="outline" className="rounded-xl border-white/25 text-slate-50 bg-white/10">
+                    <Badge
+                      variant="outline"
+                      className="rounded-xl border"
+                      style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                    >
                       Trend: {trend.label}
                     </Badge>
                   </div>
 
-                  <CardTitle className="text-3xl text-slate-50 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+                  <CardTitle className="text-3xl drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" style={{ color: "var(--text)" }}>
                     {pressureDisplay}
                   </CardTitle>
 
-                  <div className="flex items-center gap-2 text-sm text-slate-200/85">
-                    <Gauge className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-sm" style={{ color: "var(--muted)" }}>
+                    <Gauge className="h-4 w-4" style={{ color: "var(--text)" }} />
                     <span>Rate: {fmtDualRate(roc3)} (3h avg)</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-2">
-                    <AlertTriangle className="h-5 w-5 text-slate-50" />
+                  <div
+                    className="rounded-2xl border p-2"
+                    style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+                  >
+                    <AlertTriangle className="h-5 w-5" style={{ color: "var(--text)" }} />
                   </div>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-2 cursor-help">
-                          <Info className="h-5 w-5 text-slate-50" />
+                        <div
+                          className="rounded-2xl border p-2 cursor-help"
+                          style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+                        >
+                          <Info className="h-5 w-5" style={{ color: "var(--text)" }} />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-sm border-white/15 bg-black/70 text-slate-100">
+                      <TooltipContent
+                        className="max-w-sm"
+                        style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                      >
                         Risk is computed from delta(3h), delta(6h), and rate(3h). Replace with your thresholds once you have your own data.
                       </TooltipContent>
                     </Tooltip>
@@ -691,10 +750,17 @@ export default function BarometricDashboard() {
                 <MetricPill label="Delta 24h" value={fmtDualDelta(d24)} hint="Current pressure minus 24 hours ago." />
               </div>
 
-              <div className="h-56 w-full rounded-2xl border border-white/12 bg-white/6 backdrop-blur p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <div
+                className="h-56 w-full rounded-2xl border backdrop-blur p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+              >
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-slate-50">Pressure trend</div>
-                  <div className="text-xs text-slate-200/70">Chart axis in inHg (hPa shown on cards)</div>
+                  <div className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                    Pressure trend
+                  </div>
+                  <div className="text-xs" style={{ color: "var(--muted)" }}>
+                    Chart axis in inHg (hPa shown on cards)
+                  </div>
                 </div>
 
                 <ResponsiveContainer width="100%" height="100%">
@@ -702,12 +768,12 @@ export default function BarometricDashboard() {
                     <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 12, fill: "rgba(226,232,240,0.78)" }}
+                      tick={{ fontSize: 12, fill: "var(--muted)" }}
                       interval="preserveStartEnd"
                     />
                     <YAxis
                       domain={["dataMin", "dataMax"]}
-                      tick={{ fontSize: 12, fill: "rgba(226,232,240,0.78)" }}
+                      tick={{ fontSize: 12, fill: "var(--muted)" }}
                       width={52}
                       tickFormatter={(v: number) => v.toFixed(2)}
                     />
@@ -733,13 +799,25 @@ export default function BarometricDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" className="rounded-2xl border-white/25 bg-white/10 text-slate-50 hover:bg-white/18">
+                <Button
+                  variant="outline"
+                  className="rounded-2xl border hover:opacity-90"
+                  style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                >
                   Log migraine onset
                 </Button>
-                <Button variant="outline" className="rounded-2xl border-white/25 bg-white/10 text-slate-50 hover:bg-white/18">
+                <Button
+                  variant="outline"
+                  className="rounded-2xl border hover:opacity-90"
+                  style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                >
                   Log meds
                 </Button>
-                <Button variant="outline" className="rounded-2xl border-white/25 bg-white/10 text-slate-50 hover:bg-white/18">
+                <Button
+                  variant="outline"
+                  className="rounded-2xl border hover:opacity-90"
+                  style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                >
                   Export CSV
                 </Button>
               </div>
@@ -747,7 +825,10 @@ export default function BarometricDashboard() {
           </Card>
 
           <div className="grid grid-cols-1 gap-4">
-            <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
+            <Card
+              className="rounded-3xl backdrop-blur border shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
               <CardContent className="p-5 space-y-3">
                 <BigCardHeader title="Conditions" subtitle={`Clear, ${tempDisplay}`} icon={CloudMoon} />
                 <div className="grid grid-cols-2 gap-2">
@@ -757,7 +838,10 @@ export default function BarometricDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
+            <Card
+              className="rounded-3xl backdrop-blur border shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
               <CardContent className="p-5 space-y-3">
                 <BigCardHeader title="Wind" subtitle={`${liveWind} mph`} icon={Wind} />
                 <div className="grid grid-cols-2 gap-2">
@@ -767,7 +851,10 @@ export default function BarometricDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
+            <Card
+              className="rounded-3xl backdrop-blur border shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
               <CardContent className="p-5 space-y-3">
                 <BigCardHeader title="Humidity" subtitle={`${liveHumidity}%`} icon={Droplets} />
                 <div className="grid grid-cols-2 gap-2">
@@ -777,7 +864,10 @@ export default function BarometricDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
+            <Card
+              className="rounded-3xl backdrop-blur border shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            >
               <CardContent className="p-5 space-y-3">
                 <BigCardHeader title="Pressure status" subtitle={trend.label} icon={Gauge} />
                 <div className="grid grid-cols-2 gap-2">
@@ -789,7 +879,7 @@ export default function BarometricDashboard() {
           </div>
         </div>
 
-        <div className="mt-6 text-xs text-slate-200/60">
+        <div className="mt-6 text-xs" style={{ color: "var(--muted)" }}>
           Next upgrades: real data ingest, persistent event log, threshold editor, and alerts.
         </div>
       </div>
