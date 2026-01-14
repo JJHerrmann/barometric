@@ -59,13 +59,19 @@ export async function GET(_req: Request, { params }: { params: { icao: string } 
     const tempC = typeof m.temp === "number" ? m.temp : m.tempC;
     const dewC = typeof m.dewp === "number" ? m.dewp : m.dewpointC;
     const windMps = typeof m.wspd === "number" ? m.wspd : m.windSpeed;
-    const altInHg =
+    const altRaw =
       typeof m.altim === "number"
         ? m.altim
-      : typeof m.altimeter === "number"
+        : typeof m.altimeter === "number"
         ? m.altimeter
-      : typeof m.altimeter_hpa === "number"
-        ? hpaToInHg(m.altimeter_hpa)
+        : typeof m.altimeter_hpa === "number"
+        ? m.altimeter_hpa
+        : undefined;
+    const altInHg =
+      typeof altRaw === "number"
+        ? altRaw > 80
+          ? hpaToInHg(altRaw)
+          : altRaw
         : undefined;
 
     if (typeof tempC !== "number" || typeof altInHg !== "number") {
