@@ -1,32 +1,33 @@
 // app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Barometric Dashboard | Barometer.Rook.Works",
+  title: "Barometric Pressure Migraine Tracker — Barometer.Rook.Works",
   description:
-    "Track barometric pressure trends and migraine risk signals. Station-based pressure dashboard with dual units and trend/risk indicators.",
+    "Track barometric pressure patterns and changes related to migraine risk awareness without making medical claims.",
   metadataBase: new URL("https://barometer.rook.works"),
   openGraph: {
-    title: "Barometric Dashboard | Barometer.Rook.Works",
+    title: "Barometric Pressure Migraine Tracker — Barometer.Rook.Works",
     description:
-      "Track barometric pressure trends and migraine risk signals. Station-based pressure dashboard with dual units and trend/risk indicators.",
+      "Track barometric pressure patterns and changes related to migraine risk awareness without making medical claims.",
     url: "https://barometer.rook.works",
     siteName: "Barometer.Rook.Works",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Barometric Dashboard | Barometer.Rook.Works",
+    title: "Barometric Pressure Migraine Tracker — Barometer.Rook.Works",
     description:
-      "Track barometric pressure trends and migraine risk signals. Station-based pressure dashboard with dual units and trend/risk indicators.",
+      "Track barometric pressure patterns and changes related to migraine risk awareness without making medical claims.",
   },
 };
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <html lang="en">

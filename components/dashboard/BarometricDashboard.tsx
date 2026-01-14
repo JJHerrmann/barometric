@@ -156,6 +156,22 @@ type Reading = {
   wind_mph: number;
 };
 
+type Station = {
+  id: string;
+  name: string;
+  base: number;
+  drift: number;
+  noise: number;
+};
+
+const stations: Station[] = [
+  { id: "KGSO", name: "Greensboro (KGSO)", base: 30.24, drift: -0.09, noise: 0.02 },
+  { id: "KINT", name: "Winston-Salem (KINT)", base: 30.18, drift: -0.06, noise: 0.025 },
+  { id: "KCLT", name: "Charlotte (KCLT)", base: 30.12, drift: -0.04, noise: 0.02 },
+  { id: "KAVL", name: "Asheville (KAVL)", base: 29.98, drift: -0.03, noise: 0.03 },
+  { id: "KRDU", name: "Raleigh-Durham (KRDU)", base: 30.20, drift: -0.05, noise: 0.02 },
+];
+
 function makeSampleSeries({ base = 30.24, drift = -0.08, noise = 0.02 } = {}) {
   const points: Reading[] = [];
   for (let i = 0; i < 24; i++) {
@@ -338,9 +354,7 @@ function runDevTests() {
   console.assert(Math.abs(inHgToHpa(30) - 1015.9) < 0.5, "inHg->hPa rough");
   console.assert(Math.abs(fToC(32) - 0) < 1e-9, "F->C freezing");
 
-  // @ts-expect-error - dev test only
   console.assert(normalizeStationId(" k-gso ") === "KGSO", "normalizeStationId strips symbols");
-  // @ts-expect-error - dev test only
   console.assert(normalizeStationId("kavl!!") === "KAVL", "normalizeStationId uppercases");
 
   console.assert(classifyTrend(0).label === "Stable", "trend stable");
@@ -370,11 +384,8 @@ function runDevTests() {
 }
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyMeta: any = import.meta as any;
   const isDev =
-    Boolean(anyMeta?.env?.DEV) ||
-    (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development");
+    typeof process !== "undefined" && process.env && process.env.NODE_ENV === "development";
   if (typeof window !== "undefined" && isDev) runDevTests();
 } catch {
   // ignore
@@ -390,22 +401,6 @@ export default function BarometricDashboard() {
   type StationLoadState = "idle" | "loading" | "ok" | "error";
   const [stationLoadState, setStationLoadState] = useState<StationLoadState>("idle");
   const [stationError, setStationError] = useState<string>("");
-
-  type Station = {
-    id: string;
-    name: string;
-    base: number;
-    drift: number;
-    noise: number;
-  };
-
-  const stations: Station[] = [
-    { id: "KGSO", name: "Greensboro (KGSO)", base: 30.24, drift: -0.09, noise: 0.02 },
-    { id: "KINT", name: "Winston-Salem (KINT)", base: 30.18, drift: -0.06, noise: 0.025 },
-    { id: "KCLT", name: "Charlotte (KCLT)", base: 30.12, drift: -0.04, noise: 0.02 },
-    { id: "KAVL", name: "Asheville (KAVL)", base: 29.98, drift: -0.03, noise: 0.03 },
-    { id: "KRDU", name: "Raleigh-Durham (KRDU)", base: 30.20, drift: -0.05, noise: 0.02 },
-  ];
 
   const [stationId, setStationId] = useState<string>("KGSO");
   const [customStation, setCustomStation] = useState<string>("");
