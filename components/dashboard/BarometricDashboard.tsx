@@ -401,6 +401,13 @@ export default function BarometricDashboard() {
   type StationLoadState = "idle" | "loading" | "ok" | "error";
   const [stationLoadState, setStationLoadState] = useState<StationLoadState>("idle");
   const [stationError, setStationError] = useState<string>("");
+  const [liveObs, setLiveObs] = useState<null | {
+    pressure_inhg: number;
+    temp_f: number;
+    wind_mph: number | null;
+    humidity: number | null;
+    observedAt: string | null;
+  }>(null);
 
   const [stationId, setStationId] = useState<string>("KGSO");
   const [customStation, setCustomStation] = useState<string>("");
@@ -417,10 +424,28 @@ export default function BarometricDashboard() {
   }, [stationId, stationLoadState, isKnownStation, activeStation.name]);
 
   async function loadStationFromApi(nextId: string) {
-    const known = stations.some((s) => s.id === nextId);
-    await new Promise((r) => setTimeout(r, 350));
-    if (!known) throw new Error("Unknown station or connection failed");
-    return;
+    const res = await fetch(`/api/station/${encodeURIComponent(nextId)}`, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) {
+      let msg = "Connection failed";
+      try {
+        const j = await res.json();
+        if (j?.error) msg = String(j.error);
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const j = await res.json();
+    return j as {
+      station: string;
+      observedAt: string | null;
+      pressure_inhg: number;
+      temp_f: number;
+      wind_mph: number | null;
+      humidity: number | null;
+    };
   }
 
   async function applyStation(nextIdRaw: string) {
@@ -432,11 +457,19 @@ export default function BarometricDashboard() {
     setStationLoadState("loading");
 
     try {
-      await loadStationFromApi(nextId);
+      const obs = await loadStationFromApi(nextId);
+      setLiveObs({
+        pressure_inhg: obs.pressure_inhg,
+        temp_f: obs.temp_f,
+        wind_mph: obs.wind_mph,
+        humidity: obs.humidity,
+        observedAt: obs.observedAt,
+      });
       setStationLoadState("ok");
     } catch (e) {
       setStationLoadState("error");
       setStationError(e instanceof Error ? e.message : "Connection failed");
+      setLiveObs(null);
     }
   }
 
@@ -475,8 +508,13 @@ export default function BarometricDashboard() {
 
   const last = series[series.length - 1];
 
-  const tempDisplay = fmtDualTemp(last.temp_f);
-  const pressureDisplay = fmtDualPressure(pNow);
+  const livePressure = liveObs?.pressure_inhg ?? pNow;
+  const liveTempF = liveObs?.temp_f ?? last.temp_f;
+  const liveWind = liveObs?.wind_mph ?? last.wind_mph;
+  const liveHumidity = liveObs?.humidity ?? last.humidity;
+
+  const tempDisplay = fmtDualTemp(liveTempF);
+  const pressureDisplay = fmtDualPressure(livePressure);
 
   const eventDots = useMemo(() => {
     const onsetT = series[Math.max(0, series.length - 9)]?.t;
@@ -721,7 +759,7 @@ export default function BarometricDashboard() {
 
             <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
               <CardContent className="p-5 space-y-3">
-                <BigCardHeader title="Wind" subtitle={`${last.wind_mph} mph`} icon={Wind} />
+                <BigCardHeader title="Wind" subtitle={`${liveWind} mph`} icon={Wind} />
                 <div className="grid grid-cols-2 gap-2">
                   <MetricPill label="Gust" value="11 mph" hint="Mock value." />
                   <MetricPill label="Direction" value="NE" hint="Mock value." />
@@ -731,7 +769,7 @@ export default function BarometricDashboard() {
 
             <Card className="rounded-3xl bg-white/6 backdrop-blur border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]">
               <CardContent className="p-5 space-y-3">
-                <BigCardHeader title="Humidity" subtitle={`${last.humidity}%`} icon={Droplets} />
+                <BigCardHeader title="Humidity" subtitle={`${liveHumidity}%`} icon={Droplets} />
                 <div className="grid grid-cols-2 gap-2">
                   <MetricPill label="Dew point" value={fmtDualTemp(21)} hint="Mock value." />
                   <MetricPill label="Comfort" value="Normal" hint="Optional labeling." />
