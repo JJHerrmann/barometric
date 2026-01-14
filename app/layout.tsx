@@ -2,6 +2,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Barometric Pressure Migraine Tracker — Barometer.Rook.Works",
@@ -31,7 +32,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-black text-slate-100">{children}</body>
+      <body className="min-h-screen bg-black text-slate-100">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
