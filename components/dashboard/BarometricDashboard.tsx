@@ -112,6 +112,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import PreparationTools from "@/components/PreparationTools";
 import {
   LineChart,
   Line,
@@ -520,6 +521,10 @@ export default function BarometricDashboard() {
   }, [d3, d6, roc3, sensitivity]);
 
   const risk = useMemo(() => riskFromDeltas(adjusted), [adjusted]);
+  const riskLabelForPrep = (risk.label === "Elevated" ? "Moderate" : risk.label) as
+    | "Low"
+    | "Moderate"
+    | "High";
 
   const last = series[series.length - 1];
 
@@ -578,7 +583,7 @@ export default function BarometricDashboard() {
               Barometric Dashboard
             </div>
             <div className="text-xs" style={{ color: "var(--muted)" }}>
-              Mock data. Replace with METAR or sensor feed.
+              Please use station ID field to select your nearest ICAO station for best information.
             </div>
           </div>
 
@@ -876,11 +881,16 @@ export default function BarometricDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <PreparationTools risk={riskLabelForPrep} />
           </div>
         </div>
 
         <div className="mt-6 text-xs" style={{ color: "var(--muted)" }}>
           Next upgrades: real data ingest, persistent event log, threshold editor, and alerts.
+        </div>
+        <div className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+          This site contains affiliate links. We may earn a commission from qualifying purchases.
         </div>
       </div>
     </div>

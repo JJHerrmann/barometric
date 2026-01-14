@@ -1,0 +1,34 @@
+import { affiliateLinks } from "@/lib/affiliateLinks";
+
+type PreparationToolsProps = {
+  risk: "Low" | "Moderate" | "High";
+};
+
+export default function PreparationTools({ risk }: PreparationToolsProps) {
+  if (risk === "Low") return null;
+
+  return (
+    <div
+      className="rounded-2xl border px-4 py-3"
+      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+    >
+      <div className="text-sm font-semibold">Preparation tools people often use</div>
+      <div className="mt-2 space-y-2 text-sm">
+        <a
+          href={affiliateLinks.liquidIV}
+          target="_blank"
+          rel="nofollow noopener"
+          className="underline"
+        >
+          Liquid I.V. Hydration Multiplier
+        </a>
+        <a href={affiliateLinks.salud} target="_blank" rel="nofollow noopener" className="underline">
+          SALUD Electrolyte Drink
+        </a>
+      </div>
+      <div className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+        Affiliate links. We may earn a commission from qualifying purchases. No medical claims.
+      </div>
+    </div>
+  );
+}
