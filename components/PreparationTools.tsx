@@ -20,7 +20,7 @@ export default function PreparationTools({ risk }: PreparationToolsProps) {
           href={affiliateLinks.liquidIV}
           target="_blank"
           rel="nofollow noopener"
-          className="underline"
+          className="block underline"
           onClick={() =>
             trackAffiliateClick({
               partner: "amazon",
@@ -38,7 +38,7 @@ export default function PreparationTools({ risk }: PreparationToolsProps) {
           href={affiliateLinks.salud}
           target="_blank"
           rel="nofollow noopener"
-          className="underline"
+          className="block underline"
           onClick={() =>
             trackAffiliateClick({
               partner: "amazon",
