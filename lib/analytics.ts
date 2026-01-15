@@ -1,7 +1,16 @@
 // lib/analytics.ts
+type GtagCommand = "event" | "config" | "js" | "set" | "consent";
+
+type GtagFn = (
+  command: GtagCommand,
+  target: string | Date,
+  params?: Record<string, unknown>
+) => void;
+
 declare global {
   interface Window {
-    gtag?: (...args: any[]) => void;
+    gtag?: GtagFn;
+    dataLayer?: unknown[];
   }
 }
 
@@ -14,6 +23,5 @@ type AffiliateClickPayload = {
 };
 
 export function trackAffiliateClick(payload: AffiliateClickPayload) {
-  // Safe no-op if GA isn't loaded or blocked
   window.gtag?.("event", "affiliate_click", payload);
 }

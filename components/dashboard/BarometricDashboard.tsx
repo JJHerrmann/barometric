@@ -552,8 +552,9 @@ export default function BarometricDashboard() {
   }
 
   useEffect(() => {
-    void applyStation(stationId);
-  }, []);
+  void applyStation("KGSO");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   const [sensitivity, setSensitivity] = useState<number[]>([60]);
 
@@ -958,7 +959,7 @@ export default function BarometricDashboard() {
         </div>
 
         <div className="mt-6 text-xs" style={{ color: "var(--muted)" }}>
-          Next upgrades: real data ingest, persistent event log, threshold editor, and alerts.
+          Next upgrades: real data ingest(COMPLETED), persistent event log, threshold editor, and alerts.
         </div>
         <div className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
           This site contains affiliate links. We may earn a commission from qualifying purchases.
