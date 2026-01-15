@@ -105,7 +105,7 @@ Notes
   but if it causes issues, gate dev tests on process.env.NODE_ENV only.
 */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -140,6 +140,12 @@ function formatTimeLabel(h: number) {
   return `${h12} ${ampm}`;
 }
 
+function formatTimeLabelFromIso(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return formatTimeLabel(d.getHours());
+}
+
 function inHgToHpa(inhg: number) {
   return inhg * 33.8638866667;
 }
@@ -155,6 +161,11 @@ type Reading = {
   temp_f: number;
   humidity: number;
   wind_mph: number;
+};
+
+type HistoryPoint = {
+  t: string;
+  pressure_inhg: number;
 };
 
 type Station = {
@@ -425,6 +436,8 @@ export default function BarometricDashboard() {
     observedAt: string | null;
   }>(null);
 
+  const [historySeries, setHistorySeries] = useState<Reading[] | null>(null);
+
   const [stationId, setStationId] = useState<string>("KGSO");
   const [customStation, setCustomStation] = useState<string>("");
 
@@ -464,6 +477,38 @@ export default function BarometricDashboard() {
     };
   }
 
+  async function loadStationHistory(nextId: string) {
+    const res = await fetch(`/api/history/${encodeURIComponent(nextId)}?hours=24`, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) {
+      let msg = "History unavailable";
+      try {
+        const j = await res.json();
+        if (j?.error) msg = String(j.error);
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const j = await res.json();
+    return j as {
+      station: string;
+      points: HistoryPoint[];
+    };
+  }
+
+  function buildHistorySeries(points: HistoryPoint[], fallback: Reading) {
+    return points.map((p, idx) => ({
+      t: idx,
+      label: formatTimeLabelFromIso(p.t),
+      pressure_inhg: round(p.pressure_inhg, 3),
+      temp_f: fallback.temp_f,
+      humidity: fallback.humidity,
+      wind_mph: fallback.wind_mph,
+    }));
+  }
+
   async function applyStation(nextIdRaw: string) {
     const nextId = normalizeStationId(nextIdRaw);
     if (!nextId) return;
@@ -471,6 +516,7 @@ export default function BarometricDashboard() {
     setStationId(nextId);
     setStationError("");
     setStationLoadState("loading");
+    setHistorySeries(null);
 
     try {
       const obs = await loadStationFromApi(nextId);
@@ -481,6 +527,22 @@ export default function BarometricDashboard() {
         humidity: obs.humidity,
         observedAt: obs.observedAt,
       });
+
+      try {
+        const history = await loadStationHistory(nextId);
+        if (history.points.length > 0) {
+          const fallback = sampleReadings[sampleReadings.length - 1];
+          const fallbackReading = {
+            ...fallback,
+            pressure_inhg: obs.pressure_inhg,
+            temp_f: obs.temp_f,
+            humidity: obs.humidity ?? fallback.humidity,
+            wind_mph: obs.wind_mph ?? fallback.wind_mph,
+          };
+          setHistorySeries(buildHistorySeries(history.points, fallbackReading));
+        }
+      } catch {}
+
       setStationLoadState("ok");
     } catch (e) {
       setStationLoadState("error");
@@ -488,6 +550,10 @@ export default function BarometricDashboard() {
       setLiveObs(null);
     }
   }
+
+  useEffect(() => {
+    void applyStation(stationId);
+  }, []);
 
   const [sensitivity, setSensitivity] = useState<number[]>([60]);
 
@@ -501,11 +567,16 @@ export default function BarometricDashboard() {
     [activeStation]
   );
 
-  const series = useMemo(() => {
-    if (range === "12h") return sampleReadings.slice(-12);
-    if (range === "6h") return sampleReadings.slice(-6);
+  const baseSeries = useMemo(() => {
+    if (historySeries && historySeries.length) return historySeries;
     return sampleReadings;
-  }, [sampleReadings, range]);
+  }, [historySeries, sampleReadings]);
+
+  const series = useMemo(() => {
+    if (range === "12h") return baseSeries.slice(-12);
+    if (range === "6h") return baseSeries.slice(-6);
+    return baseSeries;
+  }, [baseSeries, range]);
 
   const { pNow, d1, d3, d6, d24, roc1, roc3 } = useMemo(() => calcDeltas(series), [series]);
 

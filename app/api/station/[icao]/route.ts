@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLocationByIcao } from "@/lib/mlid";
 
 function normalizeIcao(raw: string) {
   return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -19,6 +20,8 @@ function hpaToInHg(hpa: number) {
 
 export async function GET(_req: Request, { params }: { params: { icao: string } }) {
   const icao = normalizeIcao(params.icao);
+
+  const location = getLocationByIcao(icao);
 
   if (!icao || icao.length < 3) {
     return NextResponse.json({ error: `Unknown station (${params.icao})` }, { status: 400 });
@@ -88,10 +91,22 @@ export async function GET(_req: Request, { params }: { params: { icao: string } 
         ? Math.max(0, Math.min(100, Math.round(100 - (tempC - dewC) * 5)))
         : null;
 
+    const observedAt =
+      typeof m.reportTime === "string"
+        ? m.reportTime
+        : typeof m.obsTime === "number"
+        ? new Date(m.obsTime * 1000).toISOString()
+        : typeof m.time === "string"
+        ? m.time
+        : null;
+    const observedAtEpochMs = typeof m.obsTime === "number" ? Math.round(m.obsTime * 1000) : null;
+
     return NextResponse.json({
       station: icao,
-      observedAt: typeof m.obsTime === "string" ? m.obsTime : typeof m.time === "string" ? m.time : null,
+      observedAt,
+      observedAtEpochMs,
       pressure_inhg: altInHg,
+      location,
       temp_f: cToF(tempC),
       wind_mph: typeof windMps === "number" ? Math.round(mpsToMph(windMps)) : null,
       humidity,
