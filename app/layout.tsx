@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description:
     "Track barometric pressure patterns and changes related to migraine risk awareness without making medical claims.",
   metadataBase: new URL("https://barometer.rook.works"),
+  icons: {
+    icon: "/favicon.ico",
+  },
   openGraph: {
     title: "Barometric Pressure Migraine Tracker — Barometer.Rook.Works",
     description:
