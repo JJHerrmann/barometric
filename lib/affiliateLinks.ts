@@ -6,5 +6,5 @@ export function amazonUrl(dp: string) {
 
 export const affiliateLinks = {
   liquidIV: amazonUrl("B01IT9NLHW"),
-  salud: amazonUrl("B09XXXXX"),
+  salud: amazonUrl("B0BKVH19HL"),
 };
