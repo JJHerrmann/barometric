@@ -8,3 +8,5 @@ export const affiliateLinks = {
   liquidIV: amazonUrl("B01IT9NLHW"),
   salud: amazonUrl("B0BKVH19HL"),
 };
+// lib/links.ts (or wherever you keep constants)
+export const KOFI_URL = "https://ko-fi.com/mindpalacegarden";

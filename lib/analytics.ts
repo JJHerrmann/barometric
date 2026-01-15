@@ -14,10 +14,12 @@ declare global {
   }
 }
 
+type AffiliatePartner = "amazon" | "kofi";
+
 type AffiliateClickPayload = {
-  partner: "amazon";
+  partner: AffiliatePartner;
   product: string;
-  asin: string;
+  asin?: string; // optional now, since Ko-fi isn't a product SKU
   risk?: "Low" | "Moderate" | "High";
   location?: string;
 };

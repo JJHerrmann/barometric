@@ -1,4 +1,4 @@
-import { affiliateLinks } from "@/lib/affiliateLinks";
+import { affiliateLinks, KOFI_URL } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/lib/analytics";
 
 type PreparationToolsProps = {
@@ -13,13 +13,17 @@ export default function PreparationTools({ risk }: PreparationToolsProps) {
       className="rounded-2xl border px-4 py-3"
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}
     >
-      <div className="text-sm font-semibold">Preparation tools people often use</div>
+      <div className="text-sm font-semibold">
+        {isElevated
+          ? "Preparation tools people often use during pressure changes"
+          : "Preparation tools people often use"}
+      </div>
 
       <div className="mt-2 space-y-2 text-sm">
         <a
           href={affiliateLinks.liquidIV}
           target="_blank"
-          rel="nofollow noopener"
+          rel="nofollow noopener noreferrer"
           className="block underline"
           onClick={() =>
             trackAffiliateClick({
@@ -37,7 +41,7 @@ export default function PreparationTools({ risk }: PreparationToolsProps) {
         <a
           href={affiliateLinks.salud}
           target="_blank"
-          rel="nofollow noopener"
+          rel="nofollow noopener noreferrer"
           className="block underline"
           onClick={() =>
             trackAffiliateClick({
@@ -55,6 +59,26 @@ export default function PreparationTools({ risk }: PreparationToolsProps) {
 
       <div className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
         Affiliate links. We may earn a commission from qualifying purchases. No medical claims.
+      </div>
+
+      <div className="mt-2 text-xs">
+        <a
+          href={KOFI_URL}
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          className="underline"
+          onClick={() =>
+            trackAffiliateClick({
+              partner: "kofi",
+              product: "support",
+              asin: "n/a",
+              risk,
+              location: "preparation_tools",
+            })
+          }
+        >
+          Support this project on Ko-fi
+        </a>
       </div>
     </div>
   );
