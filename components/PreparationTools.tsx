@@ -6,7 +6,7 @@ type PreparationToolsProps = {
 };
 
 export default function PreparationTools({ risk }: PreparationToolsProps) {
-  if (risk === "Low") return null;
+  const isElevated = risk !== "Low";
 
   return (
     <div
