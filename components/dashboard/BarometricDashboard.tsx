@@ -446,11 +446,17 @@ export default function BarometricDashboard() {
     return found ?? stations[0];
   }, [stationId]);
 
-  const isKnownStation = useMemo(() => stations.some((s) => s.id === stationId), [stationId]);
-  const stationCaption = useMemo(() => {
-    if (stationLoadState === "error" || !isKnownStation) return `Unknown station (${stationId})`;
-    return activeStation.name;
-  }, [stationId, stationLoadState, isKnownStation, activeStation.name]);
+const isKnownStation = useMemo(() => stations.some((s) => s.id === stationId), [stationId]);
+
+const stationCaption = useMemo(() => {
+  if (stationLoadState === "loading") return `Loading ${stationId}...`;
+  if (stationLoadState === "error") return `Unknown station (${stationId})`;
+
+  // API succeeded; if it's not in our preset list, still show it as valid.
+  if (!isKnownStation) return `${stationId} (live)`;
+
+  return activeStation.name;
+}, [stationId, stationLoadState, isKnownStation, activeStation.name]);
 
   async function loadStationFromApi(nextId: string) {
     const res = await fetch(`/api/station/${encodeURIComponent(nextId)}`, {
