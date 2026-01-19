@@ -122,7 +122,17 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from "recharts";
-import { CloudMoon, Droplets, Wind, Gauge, Activity, AlertTriangle, Info } from "lucide-react";
+import {
+  CloudMoon,
+  Droplets,
+  Wind,
+  Gauge,
+  Activity,
+  AlertTriangle,
+  Info,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
@@ -164,6 +174,11 @@ type Reading = {
 };
 
 type HistoryPoint = {
+  t: string;
+  pressure_inhg: number;
+};
+
+type ForecastPoint = {
   t: string;
   pressure_inhg: number;
 };
@@ -276,6 +291,76 @@ function glassRiskTone(tone: TrendTone) {
   if (tone === "danger") return "border-red-500/30 bg-gradient-to-br from-red-500/10 via-transparent to-transparent";
   if (tone === "warn") return "border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent";
   return "border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent";
+}
+
+type RiskLabel = "Low" | "Elevated" | "High";
+
+function toneFromRiskLabel(label: RiskLabel): TrendTone {
+  if (label === "High") return "danger";
+  if (label === "Elevated") return "warn";
+  return "ok";
+}
+
+function bumpRiskLabel(label: RiskLabel, shouldBump: boolean): RiskLabel {
+  if (!shouldBump) return label;
+  if (label === "Low") return "Elevated";
+  if (label === "Elevated") return "High";
+  return "High";
+}
+
+function findForecastAtOrAfter(series: ForecastPoint[], targetMs: number) {
+  return series.find((p) => {
+    const t = Date.parse(p.t);
+    return Number.isFinite(t) && t >= targetMs;
+  });
+}
+
+function computeForecastDeltas(series: ForecastPoint[] | null) {
+  if (!series || series.length < 2) {
+    return {
+      delta3h: null as number | null,
+      delta6h: null as number | null,
+      peakShift: null as number | null,
+      target3hTime: null as string | null,
+    };
+  }
+
+  const start = series[0];
+  const startMs = Date.parse(start.t);
+  if (!Number.isFinite(startMs)) {
+    return {
+      delta3h: null,
+      delta6h: null,
+      peakShift: null,
+      target3hTime: null,
+    };
+  }
+
+  const t3 = startMs + 3 * 60 * 60 * 1000;
+  const t6 = startMs + 6 * 60 * 60 * 1000;
+  const end24 = startMs + 24 * 60 * 60 * 1000;
+
+  const target3 = findForecastAtOrAfter(series, t3) ?? series[series.length - 1];
+  const target6 = findForecastAtOrAfter(series, t6) ?? series[series.length - 1];
+
+  let peakShift = 0;
+  let hasPeak = false;
+  for (const point of series) {
+    const t = Date.parse(point.t);
+    if (!Number.isFinite(t) || t > end24) continue;
+    const delta = point.pressure_inhg - start.pressure_inhg;
+    if (!hasPeak || Math.abs(delta) > Math.abs(peakShift)) {
+      peakShift = delta;
+      hasPeak = true;
+    }
+  }
+
+  return {
+    delta3h: target3.pressure_inhg - start.pressure_inhg,
+    delta6h: target6.pressure_inhg - start.pressure_inhg,
+    peakShift: hasPeak ? peakShift : null,
+    target3hTime: target3.t ?? null,
+  };
 }
 
 function MetricPill({
@@ -437,6 +522,7 @@ export default function BarometricDashboard() {
   }>(null);
 
   const [historySeries, setHistorySeries] = useState<Reading[] | null>(null);
+  const [forecastSeries, setForecastSeries] = useState<ForecastPoint[] | null>(null);
 
   const [stationId, setStationId] = useState<string>("KGSO");
   const [customStation, setCustomStation] = useState<string>("");
@@ -475,6 +561,7 @@ const stationCaption = useMemo(() => {
     const j = await res.json();
     return j as {
       station: string;
+      location?: { lat: number | null; lon: number | null } | null;
       observedAt: string | null;
       pressure_inhg: number;
       temp_f: number;
@@ -504,6 +591,29 @@ const stationCaption = useMemo(() => {
     };
   }
 
+  async function loadForecast(lat: number, lon: number, hours = 24) {
+    const res = await fetch(
+      `/api/forecast?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&hours=${encodeURIComponent(
+        hours
+      )}`,
+      { headers: { Accept: "application/json" } }
+    );
+
+    if (!res.ok) {
+      let msg = "Forecast unavailable";
+      try {
+        const j = await res.json();
+        if (j?.error) msg = String(j.error);
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const j = await res.json();
+    return j as {
+      hourly: ForecastPoint[];
+    };
+  }
+
   function buildHistorySeries(points: HistoryPoint[], fallback: Reading) {
     return points.map((p, idx) => ({
       t: idx,
@@ -523,6 +633,7 @@ const stationCaption = useMemo(() => {
     setStationError("");
     setStationLoadState("loading");
     setHistorySeries(null);
+    setForecastSeries(null);
 
     try {
       const obs = await loadStationFromApi(nextId);
@@ -533,6 +644,14 @@ const stationCaption = useMemo(() => {
         humidity: obs.humidity,
         observedAt: obs.observedAt,
       });
+      const lat = obs.location?.lat ?? null;
+      const lon = obs.location?.lon ?? null;
+      if (typeof lat === "number" && typeof lon === "number") {
+        try {
+          const forecast = await loadForecast(lat, lon, 24);
+          setForecastSeries(forecast.hourly ?? null);
+        } catch {}
+      }
 
       try {
         const history = await loadStationHistory(nextId);
@@ -599,7 +718,25 @@ const stationCaption = useMemo(() => {
   }, [d3, d6, roc3, sensitivity]);
 
   const risk = useMemo(() => riskFromDeltas(adjusted), [adjusted]);
-  const riskLabelForPrep = (risk.label === "Elevated" ? "Moderate" : risk.label) as
+  const forecastDeltas = useMemo(() => computeForecastDeltas(forecastSeries), [forecastSeries]);
+  const forecastDelta3h = forecastDeltas.delta3h;
+  const forecastDelta6h = forecastDeltas.delta6h;
+  const forecastPeakShift = forecastDeltas.peakShift;
+
+  const forecastBump = useMemo(() => {
+    const d3 = forecastDelta3h;
+    const d6 = forecastDelta6h;
+    const peak = forecastPeakShift;
+    const hasSignal =
+      (typeof d3 === "number" && Math.abs(d3) >= 0.06) ||
+      (typeof d6 === "number" && Math.abs(d6) >= 0.1) ||
+      (typeof peak === "number" && Math.abs(peak) >= 0.12);
+    return hasSignal;
+  }, [forecastDelta3h, forecastDelta6h, forecastPeakShift]);
+
+  const riskDisplayLabel = bumpRiskLabel(risk.label as RiskLabel, forecastBump);
+  const riskDisplayTone = toneFromRiskLabel(riskDisplayLabel);
+  const riskLabelForPrep = (riskDisplayLabel === "Elevated" ? "Moderate" : riskDisplayLabel) as
     | "Low"
     | "Moderate"
     | "High";
@@ -611,6 +748,29 @@ const stationCaption = useMemo(() => {
       : roc3 > 0.02
         ? "Rapid pressure rise over the last 3 hours"
         : "Minor pressure changes";
+
+  const forecastPrimaryDelta = forecastDelta3h ?? forecastDelta6h ?? forecastPeakShift;
+  const forecastDirection =
+    typeof forecastPrimaryDelta === "number" ? (forecastPrimaryDelta >= 0 ? "up" : "down") : null;
+  const forecastDeltaDisplay =
+    typeof forecastPrimaryDelta === "number"
+      ? `${forecastPrimaryDelta >= 0 ? "+" : ""}${round(forecastPrimaryDelta, 2)} inHg`
+      : "Forecast unavailable";
+  const forecastWindowLabel = forecastDeltas.target3hTime
+    ? `By ${formatTimeLabelFromIso(forecastDeltas.target3hTime)}`
+    : "Next 3 hours";
+  const forecastHeadline =
+    typeof forecastPrimaryDelta === "number"
+      ? `Pressure ${forecastPrimaryDelta >= 0 ? "rising" : "falling"} over the next 3 hours.`
+      : "Forecast data unavailable.";
+  const forecastHint =
+    typeof forecastPrimaryDelta !== "number"
+      ? "Forecast data unavailable for this station."
+      : Math.abs(forecastPrimaryDelta) < 0.03
+        ? "Small shift expected; plan as usual."
+        : forecastPrimaryDelta < 0
+          ? "Falling pressure often correlates with headaches."
+          : "Rising pressure may bring relief for some people.";
 
   const last = series[series.length - 1];
 
@@ -777,7 +937,7 @@ const stationCaption = useMemo(() => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card
             className={`md:col-span-2 rounded-3xl border ${glassRiskTone(
-              risk.tone
+              riskDisplayTone
             )} backdrop-blur shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]`}
             style={{ backgroundColor: "var(--surface)" }}
           >
@@ -785,8 +945,8 @@ const stationCaption = useMemo(() => {
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Badge className={`rounded-xl text-sm font-semibold ${toneClasses(risk.tone)}`}>
-                      Migraine Risk: {risk.label}
+                    <Badge className={`rounded-xl text-sm font-semibold ${toneClasses(riskDisplayTone)}`}>
+                      Migraine Risk: {riskDisplayLabel}
                     </Badge>
                     <Badge
                       variant="outline"
@@ -925,6 +1085,45 @@ const stationCaption = useMemo(() => {
 
           <div className="grid grid-cols-1 gap-4">
             <Card
+              className="rounded-3xl backdrop-blur border border-indigo-500/30 bg-gradient-to-br from-indigo-500/15 via-transparent to-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
+              style={{ backgroundColor: "var(--surface)" }}
+            >
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm" style={{ color: "var(--muted)" }}>
+                      Upcoming Pressure Shift
+                    </div>
+                    <div className="text-3xl font-semibold" style={{ color: "var(--text)" }}>
+                      {forecastDeltaDisplay}
+                    </div>
+                    <div className="text-xs" style={{ color: "var(--muted)" }}>
+                      {forecastWindowLabel}
+                    </div>
+                  </div>
+                  <div
+                    className="rounded-2xl border p-2"
+                    style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+                  >
+                    {forecastDirection === "up" ? (
+                      <ArrowUp className="h-5 w-5 text-emerald-300" />
+                    ) : forecastDirection === "down" ? (
+                      <ArrowDown className="h-5 w-5 text-rose-300" />
+                    ) : (
+                      <Info className="h-5 w-5" style={{ color: "var(--text)" }} />
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  {forecastHeadline}
+                </div>
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  Risk hint: {forecastHint}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
               className="rounded-3xl backdrop-blur border shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_18px_48px_rgba(0,0,0,0.55)]"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >
@@ -980,7 +1179,7 @@ const stationCaption = useMemo(() => {
               <div className="mb-2 text-xs font-semibold" style={{ color: "var(--muted)" }}>
                 Recommended preparation (based on today&apos;s risk)
               </div>
-              <PreparationTools risk={riskLabelForPrep} className={glassRiskTone(risk.tone)} />
+              <PreparationTools risk={riskLabelForPrep} className={glassRiskTone(riskDisplayTone)} />
             </div>
           </div>
         </div>
