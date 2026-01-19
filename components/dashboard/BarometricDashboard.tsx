@@ -169,6 +169,7 @@ type Reading = {
   t: number;
   label: string;
   pressure_inhg: number;
+  kind: "observed" | "forecast";
   temp_f: number;
   humidity: number;
   wind_mph: number;
@@ -210,6 +211,7 @@ function makeSampleSeries({ base = 30.24, drift = -0.08, noise = 0.02 } = {}) {
       t: i,
       label: formatTimeLabel(i - 23),
       pressure_inhg: round(p, 3),
+      kind: "observed",
       temp_f: round(33 + Math.sin(i / 4) * 10, 1),
       humidity: round(55 + Math.cos(i / 6) * 10, 0),
       wind_mph: round(3 + Math.max(0, Math.sin(i / 4) * 5), 0),
@@ -294,21 +296,6 @@ function glassRiskTone(tone: TrendTone) {
   return "border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent";
 }
 
-type RiskLabel = "Low" | "Elevated" | "High";
-
-function toneFromRiskLabel(label: RiskLabel): TrendTone {
-  if (label === "High") return "danger";
-  if (label === "Elevated") return "warn";
-  return "ok";
-}
-
-function bumpRiskLabel(label: RiskLabel, shouldBump: boolean): RiskLabel {
-  if (!shouldBump) return label;
-  if (label === "Low") return "Elevated";
-  if (label === "Elevated") return "High";
-  return "High";
-}
-
 function findForecastAtOrAfter(series: ForecastPoint[], targetMs: number) {
   return series.find((p) => {
     const t = Date.parse(p.t);
@@ -362,6 +349,30 @@ function computeForecastDeltas(series: ForecastPoint[] | null) {
     peakShift: hasPeak ? peakShift : null,
     target3hTime: target3.t ?? null,
   };
+}
+
+function buildObservedSeries(points: HistoryPoint[], fallback: Reading) {
+  return points.map((p, idx) => ({
+    t: idx,
+    label: formatTimeLabelFromIso(p.t),
+    pressure_inhg: round(p.pressure_inhg, 3),
+    kind: "observed" as const,
+    temp_f: fallback.temp_f,
+    humidity: fallback.humidity,
+    wind_mph: fallback.wind_mph,
+  }));
+}
+
+function buildForecastSeries(points: ForecastPoint[], startIndex: number, fallback: Reading) {
+  return points.map((p, idx) => ({
+    t: startIndex + idx,
+    label: formatTimeLabelFromIso(p.t),
+    pressure_inhg: round(p.pressure_inhg, 3),
+    kind: "forecast" as const,
+    temp_f: fallback.temp_f,
+    humidity: fallback.humidity,
+    wind_mph: fallback.wind_mph,
+  }));
 }
 
 function MetricPill({
@@ -592,11 +603,9 @@ const stationCaption = useMemo(() => {
     };
   }
 
-  async function loadForecast(lat: number, lon: number, hours = 24) {
+  async function loadForecast(nextId: string, hours = 12) {
     const res = await fetch(
-      `/api/forecast?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&hours=${encodeURIComponent(
-        hours
-      )}`,
+      `/api/forecast/${encodeURIComponent(nextId)}?hours=${encodeURIComponent(hours)}`,
       { headers: { Accept: "application/json" } }
     );
 
@@ -611,19 +620,8 @@ const stationCaption = useMemo(() => {
 
     const j = await res.json();
     return j as {
-      hourly: ForecastPoint[];
+      points: ForecastPoint[];
     };
-  }
-
-  function buildHistorySeries(points: HistoryPoint[], fallback: Reading) {
-    return points.map((p, idx) => ({
-      t: idx,
-      label: formatTimeLabelFromIso(p.t),
-      pressure_inhg: round(p.pressure_inhg, 3),
-      temp_f: fallback.temp_f,
-      humidity: fallback.humidity,
-      wind_mph: fallback.wind_mph,
-    }));
   }
 
   async function applyStation(nextIdRaw: string) {
@@ -645,14 +643,10 @@ const stationCaption = useMemo(() => {
         humidity: obs.humidity,
         observedAt: obs.observedAt,
       });
-      const lat = obs.location?.lat ?? null;
-      const lon = obs.location?.lon ?? null;
-      if (typeof lat === "number" && typeof lon === "number") {
-        try {
-          const forecast = await loadForecast(lat, lon, 24);
-          setForecastSeries(forecast.hourly ?? null);
-        } catch {}
-      }
+      try {
+        const forecast = await loadForecast(nextId, 12);
+        setForecastSeries(forecast.points ?? null);
+      } catch {}
 
       try {
         const history = await loadStationHistory(nextId);
@@ -665,7 +659,7 @@ const stationCaption = useMemo(() => {
             humidity: obs.humidity ?? fallback.humidity,
             wind_mph: obs.wind_mph ?? fallback.wind_mph,
           };
-          setHistorySeries(buildHistorySeries(history.points, fallbackReading));
+          setHistorySeries(buildObservedSeries(history.points, fallbackReading));
         }
       } catch {}
 
@@ -694,18 +688,32 @@ const stationCaption = useMemo(() => {
     [activeStation]
   );
 
-  const baseSeries = useMemo(() => {
+  const observedSeries = useMemo(() => {
     if (historySeries && historySeries.length) return historySeries;
     return sampleReadings;
   }, [historySeries, sampleReadings]);
 
-  const series = useMemo(() => {
-    if (range === "12h") return baseSeries.slice(-12);
-    if (range === "6h") return baseSeries.slice(-6);
-    return baseSeries;
-  }, [baseSeries, range]);
+  const observedRange = useMemo(() => {
+    if (range === "12h") return observedSeries.slice(-12);
+    if (range === "6h") return observedSeries.slice(-6);
+    return observedSeries;
+  }, [observedSeries, range]);
 
-  const { pNow, d1, d3, d6, d24, roc1, roc3 } = useMemo(() => calcDeltas(series), [series]);
+  const forecastReadings = useMemo(() => {
+    if (!forecastSeries || forecastSeries.length === 0) return [];
+    const fallback = observedRange[observedRange.length - 1] ?? sampleReadings[sampleReadings.length - 1];
+    return buildForecastSeries(forecastSeries, observedRange.length, fallback);
+  }, [forecastSeries, observedRange, sampleReadings]);
+
+  const chartSeries = useMemo(
+    () => [...observedRange, ...forecastReadings],
+    [observedRange, forecastReadings]
+  );
+
+  const { pNow, d1, d3, d6, d24, roc1, roc3 } = useMemo(
+    () => calcDeltas(observedRange),
+    [observedRange]
+  );
 
   const trend = useMemo(() => classifyTrend(roc3), [roc3]);
 
@@ -723,21 +731,7 @@ const stationCaption = useMemo(() => {
   const forecastDelta3h = forecastDeltas.delta3h;
   const forecastDelta6h = forecastDeltas.delta6h;
   const forecastPeakShift = forecastDeltas.peakShift;
-
-  const forecastBump = useMemo(() => {
-    const d3 = forecastDelta3h;
-    const d6 = forecastDelta6h;
-    const peak = forecastPeakShift;
-    const hasSignal =
-      (typeof d3 === "number" && Math.abs(d3) >= 0.06) ||
-      (typeof d6 === "number" && Math.abs(d6) >= 0.1) ||
-      (typeof peak === "number" && Math.abs(peak) >= 0.12);
-    return hasSignal;
-  }, [forecastDelta3h, forecastDelta6h, forecastPeakShift]);
-
-  const riskDisplayLabel = bumpRiskLabel(risk.label as RiskLabel, forecastBump);
-  const riskDisplayTone = toneFromRiskLabel(riskDisplayLabel);
-  const riskLabelForPrep = (riskDisplayLabel === "Elevated" ? "Moderate" : riskDisplayLabel) as
+  const riskLabelForPrep = (risk.label === "Elevated" ? "Moderate" : risk.label) as
     | "Low"
     | "Moderate"
     | "High";
@@ -773,14 +767,14 @@ const stationCaption = useMemo(() => {
           ? "Falling pressure often correlates with headaches."
           : "Rising pressure may bring relief for some people.";
 
-  const last = series[series.length - 1];
+  const last = observedRange[observedRange.length - 1];
 
   const livePressure = liveObs?.pressure_inhg ?? pNow;
   const liveTempF = liveObs?.temp_f ?? last.temp_f;
   const liveWind = liveObs?.wind_mph ?? last.wind_mph;
   const liveHumidity = liveObs?.humidity ?? last.humidity;
 
-  const nowLabel = series[series.length - 1]?.label;
+  const nowLabel = observedRange[observedRange.length - 1]?.label;
 
   const tempDisplay = fmtDualTemp(liveTempF);
   const pressureDisplay = fmtDualPressure(livePressure);
@@ -791,13 +785,13 @@ const stationCaption = useMemo(() => {
       : null;
 
   const eventDots = useMemo(() => {
-    const onsetT = series[Math.max(0, series.length - 9)]?.t;
-    const medsT = series[Math.max(0, series.length - 7)]?.t;
+    const onsetT = observedRange[Math.max(0, observedRange.length - 9)]?.t;
+    const medsT = observedRange[Math.max(0, observedRange.length - 7)]?.t;
     return [
       { t: onsetT, kind: "onset" as const, label: "Migraine onset" },
       { t: medsT, kind: "med" as const, label: "Meds" },
     ].filter((e) => typeof e.t === "number");
-  }, [series]);
+  }, [observedRange]);
 
   return (
     <div
@@ -945,7 +939,7 @@ const stationCaption = useMemo(() => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card
             className={`md:col-span-2 rounded-3xl border ${glassRiskTone(
-              riskDisplayTone
+              risk.tone
             )} backdrop-blur shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]`}
             style={{ backgroundColor: "var(--surface)" }}
           >
@@ -953,8 +947,8 @@ const stationCaption = useMemo(() => {
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Badge className={`rounded-xl text-sm font-semibold ${toneClasses(riskDisplayTone)}`}>
-                      Migraine Risk: {riskDisplayLabel}
+                    <Badge className={`rounded-xl text-sm font-semibold ${toneClasses(risk.tone)}`}>
+                      Migraine Risk: {risk.label}
                     </Badge>
                     <Badge
                       variant="outline"
@@ -1034,9 +1028,12 @@ const stationCaption = useMemo(() => {
                     Chart axis in inHg (hPa shown on cards)
                   </div>
                 </div>
+                <div className="mb-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                  Forecast values are estimates and may change.
+                </div>
 
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={series} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+                  <LineChart data={chartSeries} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
                     <XAxis
                       dataKey="label"
@@ -1063,10 +1060,26 @@ const stationCaption = useMemo(() => {
                         }}
                       />
                     ) : null}
-                    <Line type="monotone" dataKey="pressure_inhg" stroke="rgba(177,147,255,0.95)" strokeWidth={2.6} dot={false} />
+                    <Line
+                      data={chartSeries.filter((p) => p.kind === "observed")}
+                      type="monotone"
+                      dataKey="pressure_inhg"
+                      stroke="rgba(177,147,255,0.95)"
+                      strokeWidth={2.6}
+                      dot={false}
+                    />
+                    <Line
+                      data={chartSeries.filter((p) => p.kind === "forecast")}
+                      type="monotone"
+                      dataKey="pressure_inhg"
+                      stroke="rgba(177,147,255,0.55)"
+                      strokeDasharray="6 6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
 
                     {eventDots.map((e, idx) => {
-                      const point = series.find((p) => p.t === e.t);
+                      const point = observedRange.find((p) => p.t === e.t);
                       if (!point) return null;
                       return (
                         <ReferenceDot
@@ -1206,7 +1219,7 @@ const stationCaption = useMemo(() => {
               <div className="mb-2 text-xs font-semibold" style={{ color: "var(--muted)" }}>
                 Recommended preparation (based on today&apos;s risk)
               </div>
-              <PreparationTools risk={riskLabelForPrep} className={glassRiskTone(riskDisplayTone)} />
+              <PreparationTools risk={riskLabelForPrep} className={glassRiskTone(risk.tone)} />
             </div>
           </div>
         </div>
