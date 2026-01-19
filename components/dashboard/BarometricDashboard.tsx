@@ -121,6 +121,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   ReferenceDot,
+  ReferenceLine,
 } from "recharts";
 import {
   CloudMoon,
@@ -779,8 +780,15 @@ const stationCaption = useMemo(() => {
   const liveWind = liveObs?.wind_mph ?? last.wind_mph;
   const liveHumidity = liveObs?.humidity ?? last.humidity;
 
+  const nowLabel = series[series.length - 1]?.label;
+
   const tempDisplay = fmtDualTemp(liveTempF);
   const pressureDisplay = fmtDualPressure(livePressure);
+  const asOfLabel = liveObs?.observedAt
+    ? `As of ${formatTimeLabelFromIso(liveObs.observedAt)}`
+    : nowLabel
+      ? `As of ${nowLabel}`
+      : null;
 
   const eventDots = useMemo(() => {
     const onsetT = series[Math.max(0, series.length - 9)]?.t;
@@ -963,6 +971,11 @@ const stationCaption = useMemo(() => {
                   <CardTitle className="text-2xl font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" style={{ color: "var(--text)" }}>
                     {pressureDisplay}
                   </CardTitle>
+                  {asOfLabel ? (
+                    <div className="text-xs" style={{ color: "var(--muted)" }}>
+                      {asOfLabel}
+                    </div>
+                  ) : null}
 
                   <div className="flex items-center gap-2 text-sm" style={{ color: "var(--muted)" }}>
                     <Gauge className="h-4 w-4" style={{ color: "var(--text)" }} />
@@ -1036,6 +1049,20 @@ const stationCaption = useMemo(() => {
                       width={52}
                       tickFormatter={(v: number) => v.toFixed(2)}
                     />
+                    {nowLabel ? (
+                      <ReferenceLine
+                        x={nowLabel}
+                        stroke="rgba(177,147,255,0.85)"
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        label={{
+                          value: "Now",
+                          position: "top",
+                          fill: "rgba(177,147,255,0.9)",
+                          fontSize: 12,
+                        }}
+                      />
+                    ) : null}
                     <Line type="monotone" dataKey="pressure_inhg" stroke="rgba(177,147,255,0.95)" strokeWidth={2.6} dot={false} />
 
                     {eventDots.map((e, idx) => {
