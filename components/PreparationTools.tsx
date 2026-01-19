@@ -3,15 +3,16 @@ import { trackAffiliateClick } from "@/lib/analytics";
 
 type PreparationToolsProps = {
   risk: "Low" | "Moderate" | "High";
+  className?: string;
 };
 
-export default function PreparationTools({ risk }: PreparationToolsProps) {
+export default function PreparationTools({ risk, className }: PreparationToolsProps) {
   const isElevated = risk !== "Low";
 
   return (
     <div
-      className="rounded-2xl border px-4 py-3"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      className={`rounded-2xl border border-[var(--border)] px-4 py-3 ${className ?? ""}`}
+      style={{ backgroundColor: "var(--surface)" }}
     >
       <div className="text-sm font-semibold">
         {isElevated

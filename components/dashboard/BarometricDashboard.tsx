@@ -272,10 +272,10 @@ function toneClasses(tone: TrendTone) {
   return "bg-emerald-600/90 text-[var(--text)]";
 }
 
-function softToneBorder(tone: TrendTone) {
-  if (tone === "danger") return "border-red-500/30";
-  if (tone === "warn") return "border-yellow-500/30";
-  return "border-emerald-500/30";
+function glassRiskTone(tone: TrendTone) {
+  if (tone === "danger") return "border-red-500/30 bg-gradient-to-br from-red-500/10 via-transparent to-transparent";
+  if (tone === "warn") return "border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent";
+  return "border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent";
 }
 
 function MetricPill({
@@ -603,6 +603,14 @@ const stationCaption = useMemo(() => {
     | "Low"
     | "Moderate"
     | "High";
+  const riskLabelForSummary = riskLabelForPrep;
+
+  const primaryDriver =
+    roc3 < -0.02
+      ? "Rapid pressure drop over the last 3 hours"
+      : roc3 > 0.02
+        ? "Rapid pressure rise over the last 3 hours"
+        : "Minor pressure changes";
 
   const last = series[series.length - 1];
 
@@ -658,7 +666,10 @@ const stationCaption = useMemo(() => {
               {stationCaption}
             </div>
             <div className="text-2xl font-semibold" style={{ color: "var(--text)" }}>
-              Barometric Dashboard
+              Barometric Pressure & Migraine Risk
+            </div>
+            <div className="text-sm" style={{ color: "var(--muted)" }}>
+              Today&apos;s pressure trend suggests a {riskLabelForSummary} migraine risk.
             </div>
             <div className="text-xs" style={{ color: "var(--muted)" }}>
               Please use station ID field to select your nearest ICAO station for best information.
@@ -725,10 +736,10 @@ const stationCaption = useMemo(() => {
               className="flex items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >
-              <span className="text-xs" style={{ color: "var(--muted)" }}>
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>
                 Pressure: inHg (hPa)
               </span>
-              <span className="text-xs" style={{ color: "var(--muted)" }}>
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>
                 Temp: F (C)
               </span>
             </div>
@@ -765,16 +776,16 @@ const stationCaption = useMemo(() => {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card
-            className={`md:col-span-2 rounded-3xl border ${softToneBorder(
+            className={`md:col-span-2 rounded-3xl border ${glassRiskTone(
               risk.tone
             )} backdrop-blur shadow-[0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]`}
-            style={{ background: "var(--surface)" }}
+            style={{ backgroundColor: "var(--surface)" }}
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Badge className={`rounded-xl ${toneClasses(risk.tone)}`}>
+                    <Badge className={`rounded-xl text-sm font-semibold ${toneClasses(risk.tone)}`}>
                       Migraine Risk: {risk.label}
                     </Badge>
                     <Badge
@@ -785,8 +796,11 @@ const stationCaption = useMemo(() => {
                       Trend: {trend.label}
                     </Badge>
                   </div>
+                  <div className="text-xs" style={{ color: "var(--muted)" }}>
+                    Primary driver: {primaryDriver}
+                  </div>
 
-                  <CardTitle className="text-3xl drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" style={{ color: "var(--text)" }}>
+                  <CardTitle className="text-2xl font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" style={{ color: "var(--text)" }}>
                     {pressureDisplay}
                   </CardTitle>
 
@@ -817,7 +831,9 @@ const stationCaption = useMemo(() => {
                         className="max-w-sm"
                         style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
                       >
-                        Risk is computed from delta(3h), delta(6h), and rate(3h). Replace with your thresholds once you have your own data.
+                        This estimate is based on recent barometric pressure changes. Many people report migraines
+                        during rapid pressure shifts, but responses vary by individual. This tool is informational
+                        only.
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -960,7 +976,12 @@ const stationCaption = useMemo(() => {
               </CardContent>
             </Card>
 
-            <PreparationTools risk={riskLabelForPrep} />
+            <div className="rounded-2xl">
+              <div className="mb-2 text-xs font-semibold" style={{ color: "var(--muted)" }}>
+                Recommended preparation (based on today&apos;s risk)
+              </div>
+              <PreparationTools risk={riskLabelForPrep} className={glassRiskTone(risk.tone)} />
+            </div>
           </div>
         </div>
 
