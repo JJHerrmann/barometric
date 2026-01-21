@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og/barometer.svg",
+        url: "/logo.png",
         width: 1200,
         height: 630,
         alt: "Barometric Pressure Migraine Tracker",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: ["/og/barometer.svg"],
+    images: ["/logo.png"],
   },
 };
 
