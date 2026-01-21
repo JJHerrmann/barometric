@@ -758,7 +758,8 @@ const stationCaption = useMemo(() => {
   const forecastReadings = useMemo(() => {
     if (!forecastSeries || forecastSeries.length === 0) return [];
     const fallback = observedRange[observedRange.length - 1] ?? sampleReadings[sampleReadings.length - 1];
-    return buildForecastSeries(forecastSeries, observedRange.length, fallback);
+    const lastObservedT = observedRange[observedRange.length - 1]?.t ?? 0;
+    return buildForecastSeries(forecastSeries, lastObservedT + 1, fallback);
   }, [forecastSeries, observedRange, sampleReadings]);
 
   const chartSeries = useMemo(
@@ -1125,7 +1126,7 @@ const stationCaption = useMemo(() => {
               </div>
 
               <div
-                className="h-56 w-full rounded-2xl border backdrop-blur p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                className="h-64 md:h-72 w-full rounded-2xl border backdrop-blur p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                 style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
               >
                 <div className="mb-2 flex items-center justify-between">
