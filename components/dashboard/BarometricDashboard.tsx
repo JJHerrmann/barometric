@@ -185,6 +185,9 @@ type MigraineEvent = {
   pressure_inhg: number;
   delta3h: number;
   delta6h: number;
+  linkedEventId?: string;
+  meds?: string[];
+  symptoms?: string[];
   notes?: string;
 };
 
@@ -620,6 +623,20 @@ export default function BarometricDashboard() {
   const [range, setRange] = useState<"6h" | "12h" | "24h">("24h");
   const [events, setEvents] = useState<MigraineEvent[]>([]);
   const [triggerDeltaInHg, setTriggerDeltaInHg] = useState<number[]>([0.06]);
+  const [onsetModalOpen, setOnsetModalOpen] = useState(false);
+  const [medsModalOpen, setMedsModalOpen] = useState(false);
+  const [onsetDraft, setOnsetDraft] = useState<MigraineEvent | null>(null);
+  const [onsetSymptoms, setOnsetSymptoms] = useState<string[]>([]);
+  const [onsetMedsTaken, setOnsetMedsTaken] = useState(false);
+  const [medsDraft, setMedsDraft] = useState<{
+    at: string;
+    linkedEventId?: string | null;
+    baseEvent?: MigraineEvent;
+  } | null>(null);
+  const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
+  const lastFocusRef = React.useRef<HTMLElement | null>(null);
+  const onsetModalRef = React.useRef<HTMLDivElement | null>(null);
+  const medsModalRef = React.useRef<HTMLDivElement | null>(null);
 
   type StationLoadState = "idle" | "loading" | "ok" | "error";
   const [stationLoadState, setStationLoadState] = useState<StationLoadState>("idle");
@@ -789,6 +806,20 @@ const stationCaption = useMemo(() => {
     if (Number.isFinite(value)) saveTriggerDelta(value);
   }, [triggerDeltaInHg]);
 
+  useEffect(() => {
+    if (onsetModalOpen || medsModalOpen) {
+      lastFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+  }, [onsetModalOpen, medsModalOpen]);
+
+  useEffect(() => {
+    if (onsetModalOpen && onsetModalRef.current) onsetModalRef.current.focus();
+  }, [onsetModalOpen]);
+
+  useEffect(() => {
+    if (medsModalOpen && medsModalRef.current) medsModalRef.current.focus();
+  }, [medsModalOpen]);
+
   const [sensitivity, setSensitivity] = useState<number[]>([60]);
 
   const sampleReadings = useMemo(
@@ -915,8 +946,14 @@ const stationCaption = useMemo(() => {
       ? `As of ${nowLabel}`
       : null;
 
-  function logEvent(type: MigraineEventType) {
-    const entry: MigraineEvent = {
+  function addEvent(entry: MigraineEvent) {
+    const next = [...events, entry];
+    setEvents(next);
+    saveEvents(next);
+  }
+
+  function buildBaseEvent(type: MigraineEventType): MigraineEvent {
+    return {
       id: makeEventId(),
       type,
       at: new Date().toISOString(),
@@ -925,16 +962,22 @@ const stationCaption = useMemo(() => {
       delta3h: d3,
       delta6h: d6,
     };
-
-    const next = [...events, entry];
-    setEvents(next);
-    saveEvents(next);
   }
 
   function exportEventsCsv() {
     if (events.length === 0) return;
     const rows = [
-      ["timestamp", "event_type", "station", "pressure_inhg", "delta_3h", "delta_6h"],
+      [
+        "timestamp",
+        "event_type",
+        "station",
+        "pressure_inhg",
+        "delta_3h",
+        "delta_6h",
+        "linked_event_id",
+        "meds",
+        "symptoms",
+      ],
       ...events.map((event) => [
         event.at,
         event.type,
@@ -942,6 +985,9 @@ const stationCaption = useMemo(() => {
         round(event.pressure_inhg, 3).toString(),
         round(event.delta3h, 3).toString(),
         round(event.delta6h, 3).toString(),
+        event.linkedEventId ?? "",
+        event.meds?.join("|") ?? "",
+        event.symptoms?.join("|") ?? "",
       ]),
     ];
 
@@ -965,6 +1011,107 @@ const stationCaption = useMemo(() => {
   }, [observedRange]);
 
   const recentEvents = useMemo(() => events.slice(-5).reverse(), [events]);
+
+  const symptomOptions = [
+    "Pain",
+    "Auditory",
+    "Photophobia",
+    "Nausea",
+    "Aura",
+    "Visual",
+    "Cognitive",
+    "Dizziness",
+    "Neck tension",
+  ];
+
+  const medCategories = [
+    { label: "Painkillers", items: ["Ibuprofen", "Acetaminophen", "Naproxen", "Aspirin"] },
+    { label: "Standard migraine meds", items: ["Sumatriptan", "Rizatriptan", "Zolmitriptan", "Eletriptan"] },
+    { label: "Rescue migraine meds", items: ["Metoclopramide", "Prochlorperazine", "Ketorolac", "Ondansetron"] },
+  ];
+
+  function toggleSymptom(name: string) {
+    setOnsetSymptoms((prev) => (prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name]));
+  }
+
+  function toggleMed(name: string) {
+    setSelectedMeds((prev) => (prev.includes(name) ? prev.filter((m) => m !== name) : [...prev, name]));
+  }
+
+  function openOnsetModal() {
+    const base = buildBaseEvent("onset");
+    setOnsetDraft(base);
+    setOnsetSymptoms([]);
+    setOnsetMedsTaken(false);
+    setOnsetModalOpen(true);
+  }
+
+  function openMedsModal(options?: { at?: string; linkedEventId?: string; baseEvent?: MigraineEvent }) {
+    const base = options?.baseEvent ?? buildBaseEvent("meds");
+    setMedsDraft({
+      at: options?.at ?? base.at,
+      linkedEventId: options?.linkedEventId ?? null,
+      baseEvent: base,
+    });
+    setSelectedMeds([]);
+    setMedsModalOpen(true);
+  }
+
+  function handleMedsTakenChange(checked: boolean) {
+    setOnsetMedsTaken(checked);
+    if (checked && onsetDraft) {
+      setOnsetModalOpen(false);
+      openMedsModal({ at: onsetDraft.at, linkedEventId: onsetDraft.id, baseEvent: onsetDraft });
+    }
+  }
+
+  function submitOnset() {
+    if (!onsetDraft) return;
+    const entry: MigraineEvent = {
+      ...onsetDraft,
+      type: "onset",
+      symptoms: onsetSymptoms.length ? onsetSymptoms : undefined,
+    };
+    addEvent(entry);
+    setOnsetDraft(null);
+    setOnsetSymptoms([]);
+    setOnsetMedsTaken(false);
+    setOnsetModalOpen(false);
+    lastFocusRef.current?.focus();
+  }
+
+  function submitMeds() {
+    if (!medsDraft) return;
+    const base = medsDraft.baseEvent ?? buildBaseEvent("meds");
+    const entry: MigraineEvent = {
+      ...base,
+      id: makeEventId(),
+      type: "meds",
+      at: medsDraft.at,
+      linkedEventId: medsDraft.linkedEventId ?? undefined,
+      meds: selectedMeds.length ? selectedMeds : undefined,
+    };
+    addEvent(entry);
+    setMedsDraft(null);
+    setSelectedMeds([]);
+    setMedsModalOpen(false);
+    if (onsetDraft) {
+      setOnsetModalOpen(true);
+    } else {
+      lastFocusRef.current?.focus();
+    }
+  }
+
+  function cancelMeds() {
+    setMedsDraft(null);
+    setSelectedMeds([]);
+    setMedsModalOpen(false);
+    if (onsetDraft) {
+      setOnsetModalOpen(true);
+    } else {
+      lastFocusRef.current?.focus();
+    }
+  }
 
   return (
     <div
@@ -1320,7 +1467,7 @@ const stationCaption = useMemo(() => {
                   variant="outline"
                   className="rounded-2xl border hover:opacity-90"
                   style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
-                  onClick={() => logEvent("onset")}
+                  onClick={openOnsetModal}
                 >
                   Log migraine onset
                 </Button>
@@ -1328,7 +1475,7 @@ const stationCaption = useMemo(() => {
                   variant="outline"
                   className="rounded-2xl border hover:opacity-90"
                   style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
-                  onClick={() => logEvent("meds")}
+                  onClick={() => openMedsModal()}
                 >
                   Log meds
                 </Button>
@@ -1476,6 +1623,117 @@ const stationCaption = useMemo(() => {
           This site contains affiliate links. We may earn a commission from qualifying purchases.
         </div>
       </div>
+
+      {onsetModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div
+            ref={onsetModalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl border p-4 shadow-[0_10px_40px_rgba(0,0,0,0.55)]"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Log migraine onset"
+          >
+            <div className="text-lg font-semibold">Migraine onset</div>
+            <div className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              {onsetDraft ? formatLocalTimestamp(onsetDraft.at) : ""}
+            </div>
+
+            <div className="mt-4 text-sm font-semibold">Symptoms</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+              {symptomOptions.map((symptom) => (
+                <label key={symptom} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={onsetSymptoms.includes(symptom)}
+                    onChange={() => toggleSymptom(symptom)}
+                  />
+                  <span>{symptom}</span>
+                </label>
+              ))}
+            </div>
+
+            <label className="mt-4 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={onsetMedsTaken}
+                onChange={(e) => handleMedsTakenChange(e.target.checked)}
+              />
+              <span>Meds taken during this episode</span>
+            </label>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl border"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                onClick={() => {
+                  setOnsetModalOpen(false);
+                  setOnsetDraft(null);
+                  setOnsetSymptoms([]);
+                  setOnsetMedsTaken(false);
+                  lastFocusRef.current?.focus();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button className="rounded-xl" onClick={submitOnset}>
+                Save onset
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {medsModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div
+            ref={medsModalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl border p-4 shadow-[0_10px_40px_rgba(0,0,0,0.55)]"
+            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Log medications"
+          >
+            <div className="text-lg font-semibold">Medication log</div>
+            <div className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              {medsDraft ? formatLocalTimestamp(medsDraft.at) : ""}
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs">
+              {medCategories.map((cat) => (
+                <div key={cat.label}>
+                  <div className="text-sm font-semibold">{cat.label}</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {cat.items.map((med) => (
+                      <label key={med} className="flex items-center gap-2">
+                        <input type="checkbox" checked={selectedMeds.includes(med)} onChange={() => toggleMed(med)} />
+                        <span>{med}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl border"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                onClick={cancelMeds}
+              >
+                Cancel
+              </Button>
+              <Button className="rounded-xl" onClick={submitMeds}>
+                Save meds
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
