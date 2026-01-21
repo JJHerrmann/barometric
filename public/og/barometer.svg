@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0b0d14"/>
+      <stop offset="100%" stop-color="#20263a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#b193ff"/>
+      <stop offset="100%" stop-color="#7aa6ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="920" cy="150" r="140" fill="#2a2f45" opacity="0.6"/>
+  <rect x="100" y="120" width="1000" height="390" rx="28" fill="#1a1f33" opacity="0.85"/>
+  <rect x="140" y="170" width="920" height="6" fill="url(#accent)" opacity="0.9"/>
+  <text x="140" y="260" fill="#f2f4ff" font-size="48" font-family="Georgia, 'Times New Roman', serif">
+    Barometric Pressure Migraine Tracker
+  </text>
+  <text x="140" y="320" fill="#c9d1ff" font-size="26" font-family="Georgia, 'Times New Roman', serif">
+    Track pressure shifts and log your migraine timeline.
+  </text>
+  <text x="140" y="380" fill="#9aa3c7" font-size="22" font-family="Georgia, 'Times New Roman', serif">
+    barometer.rook.works
+  </text>
+</svg>

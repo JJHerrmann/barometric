@@ -17,7 +17,7 @@ const faqJsonLd = {
       name: "Where does the pressure data come from?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "The current dashboard uses mock data for demonstration. A server-side data feed is planned for a later release.",
+        text: "Live station observations are sourced from NOAA METAR feeds, with short-term forecast context from Open-Meteo. Some stations may fall back to sample data if the feed is unavailable.",
       },
     },
     {
@@ -33,7 +33,7 @@ const faqJsonLd = {
       name: "Can I log migraine events here?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Event logging is planned. For now, you can use the interface to explore trends and add your own notes externally.",
+        text: "Yes. You can log migraine onset and medications locally in your browser and export your data as CSV.",
       },
     },
   ],
@@ -58,8 +58,9 @@ export default function FaqPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-50">Where does the pressure data come from?</h2>
           <p>
-            The current dashboard uses mock data for demonstration. A server-side data feed is
-            planned for a later release.
+            Live station observations are sourced from NOAA METAR feeds, with short-term forecast
+            context from Open-Meteo. Some stations may fall back to sample data if the feed is
+            unavailable.
           </p>
         </div>
         <div>
@@ -72,8 +73,8 @@ export default function FaqPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-50">Can I log migraine events here?</h2>
           <p>
-            Event logging is planned. For now, you can use the interface to explore trends and add
-            your own notes externally.
+            Yes. You can log migraine onset and medications locally in your browser and export your
+            data as CSV.
           </p>
         </div>
       </section>
