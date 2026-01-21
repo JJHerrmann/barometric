@@ -1379,7 +1379,7 @@ const stationCaption = useMemo(() => {
               </div>
 
               <div
-                className="h-[18.5rem] md:h-[22.5rem] w-full rounded-2xl border backdrop-blur p-3 pb-5 overflow-hidden shadow-[inset_0_1px_rgba(255,255,255,0.06)]"
+                className="flex h-[18.5rem] md:h-[22.5rem] w-full flex-col rounded-2xl border backdrop-blur p-3 overflow-hidden shadow-[inset_0_1px_rgba(255,255,255,0.06)]"
                 style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
               >
                 <div className="mb-2 flex items-center justify-between">
@@ -1396,70 +1396,71 @@ const stationCaption = useMemo(() => {
                 <div className="mb-2 text-[11px]" style={{ color: "var(--muted)" }}>
                   Forecast values are estimates and may change.
                 </div>
-
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartSeries} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-                    <XAxis
-                      dataKey="t"
-                      type="number"
-                      domain={["dataMin", "dataMax"]}
-                      tick={{ fontSize: 12, fill: "var(--muted)" }}
-                      interval="preserveStartEnd"
-                      tickFormatter={(t: number) => {
-                        const point = chartSeries.find((p) => p.t === t);
-                        return point ? point.label : "";
-                      }}
-                    />
-                    <YAxis
-                      domain={["dataMin", "dataMax"]}
-                      tick={{ fontSize: 12, fill: "var(--muted)" }}
-                      width={52}
-                      tickFormatter={(v: number) => v.toFixed(2)}
-                    />
-                    {typeof nowT === "number" ? (
-                      <ReferenceLine
-                        x={nowT}
-                        stroke="rgba(177,147,255,0.9)"
-                        strokeDasharray="4 4"
-                        label={{ value: "Now", position: "top" }}
+                <div className="min-h-0 flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartSeries} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                      <XAxis
+                        dataKey="t"
+                        type="number"
+                        domain={["dataMin", "dataMax"]}
+                        tick={{ fontSize: 12, fill: "var(--muted)" }}
+                        interval="preserveStartEnd"
+                        tickFormatter={(t: number) => {
+                          const point = chartSeries.find((p) => p.t === t);
+                          return point ? point.label : "";
+                        }}
                       />
-                    ) : null}
-                    <Line
-                      data={chartSeries.filter((p) => p.kind === "observed")}
-                      type="monotone"
-                      dataKey="pressure_inhg"
-                      stroke="rgba(177,147,255,0.95)"
-                      strokeWidth={2.6}
-                      dot={false}
-                    />
-                    <Line
-                      data={chartSeries.filter((p) => p.kind === "forecast")}
-                      type="monotone"
-                      dataKey="pressure_inhg"
-                      stroke="rgba(177,147,255,0.55)"
-                      strokeDasharray="6 6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-
-                    {eventDots.map((e, idx) => {
-                      const point = observedRange.find((p) => p.t === e.t);
-                      if (!point) return null;
-                      return (
-                        <ReferenceDot
-                          key={idx}
-                          x={point.label}
-                          y={point.pressure_inhg}
-                          r={6}
-                          fill={e.kind === "onset" ? "rgba(185,76,59,0.95)" : "rgba(217,201,29,0.95)"}
-                          stroke="rgba(0,0,0,0.25)"
-                          ifOverflow="extendDomain"
+                      <YAxis
+                        domain={["dataMin", "dataMax"]}
+                        tick={{ fontSize: 12, fill: "var(--muted)" }}
+                        width={52}
+                        tickFormatter={(v: number) => v.toFixed(2)}
+                      />
+                      {typeof nowT === "number" ? (
+                        <ReferenceLine
+                          x={nowT}
+                          stroke="rgba(177,147,255,0.9)"
+                          strokeDasharray="4 4"
+                          label={{ value: "Now", position: "top" }}
                         />
-                      );
-                    })}
-                  </LineChart>
-                </ResponsiveContainer>
+                      ) : null}
+                      <Line
+                        data={chartSeries.filter((p) => p.kind === "observed")}
+                        type="monotone"
+                        dataKey="pressure_inhg"
+                        stroke="rgba(177,147,255,0.95)"
+                        strokeWidth={2.6}
+                        dot={false}
+                      />
+                      <Line
+                        data={chartSeries.filter((p) => p.kind === "forecast")}
+                        type="monotone"
+                        dataKey="pressure_inhg"
+                        stroke="rgba(177,147,255,0.55)"
+                        strokeDasharray="6 6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+
+                      {eventDots.map((e, idx) => {
+                        const point = observedRange.find((p) => p.t === e.t);
+                        if (!point) return null;
+                        return (
+                          <ReferenceDot
+                            key={idx}
+                            x={point.label}
+                            y={point.pressure_inhg}
+                            r={6}
+                            fill={e.kind === "onset" ? "rgba(185,76,59,0.95)" : "rgba(217,201,29,0.95)"}
+                            stroke="rgba(0,0,0,0.25)"
+                            ifOverflow="extendDomain"
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
