@@ -389,6 +389,7 @@ function buildForecastSeries(points: ForecastPoint[], startIndex: number, fallba
 }
 
 const EVENT_KEY = "rook.migraine.events.v1";
+const TRIGGER_KEY = "rook.migraine.trigger.v1";
 
 function loadEvents(): MigraineEvent[] {
   try {
@@ -404,6 +405,27 @@ function saveEvents(events: MigraineEvent[]) {
   try {
     if (typeof window === "undefined" || !window.localStorage) return;
     window.localStorage.setItem(EVENT_KEY, JSON.stringify(events));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function loadTriggerDelta(): number | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(TRIGGER_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveTriggerDelta(value: number) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    window.localStorage.setItem(TRIGGER_KEY, String(value));
   } catch {
     // ignore storage failures
   }
@@ -425,6 +447,30 @@ function formatLocalTimestamp(iso: string) {
 }
 
 // Future: consider IndexedDB, pain scale (1-10), optional notes, and export merge with pressure history.
+
+function findForecastTrigger(series: ForecastPoint[] | null, triggerDelta: number) {
+  if (!series || series.length < 2 || !Number.isFinite(triggerDelta) || triggerDelta <= 0) return null;
+  const startMs = Date.parse(series[0].t);
+  if (!Number.isFinite(startMs)) return null;
+  const nearThreshold = triggerDelta * 0.8;
+
+  for (const point of series) {
+    const t = Date.parse(point.t);
+    if (!Number.isFinite(t)) continue;
+    const delta = point.pressure_inhg - series[0].pressure_inhg;
+    const abs = Math.abs(delta);
+    if (abs >= nearThreshold) {
+      const hours = Math.max(1, Math.round((t - startMs) / (60 * 60 * 1000)));
+      return {
+        hours,
+        when: point.t,
+        kind: abs >= triggerDelta ? "over" : "near",
+      } as const;
+    }
+  }
+
+  return null;
+}
 
 function MetricPill({
   label,
@@ -573,6 +619,7 @@ function normalizeStationId(raw: string) {
 export default function BarometricDashboard() {
   const [range, setRange] = useState<"6h" | "12h" | "24h">("24h");
   const [events, setEvents] = useState<MigraineEvent[]>([]);
+  const [triggerDeltaInHg, setTriggerDeltaInHg] = useState<number[]>([0.06]);
 
   type StationLoadState = "idle" | "loading" | "ok" | "error";
   const [stationLoadState, setStationLoadState] = useState<StationLoadState>("idle");
@@ -732,6 +779,16 @@ const stationCaption = useMemo(() => {
     setEvents(loadEvents());
   }, []);
 
+  useEffect(() => {
+    const stored = loadTriggerDelta();
+    if (typeof stored === "number") setTriggerDeltaInHg([stored]);
+  }, []);
+
+  useEffect(() => {
+    const value = triggerDeltaInHg[0];
+    if (Number.isFinite(value)) saveTriggerDelta(value);
+  }, [triggerDeltaInHg]);
+
   const [sensitivity, setSensitivity] = useState<number[]>([60]);
 
   const sampleReadings = useMemo(
@@ -775,13 +832,18 @@ const stationCaption = useMemo(() => {
   const trend = useMemo(() => classifyTrend(roc3), [roc3]);
 
   const adjusted = useMemo(() => {
-    const k = clamp(sensitivity[0] / 60, 0.6, 1.6);
+    const baselineTrigger = 0.06;
+    const triggerValue = triggerDeltaInHg[0];
+    const k =
+      Number.isFinite(triggerValue) && triggerValue > 0
+        ? clamp(baselineTrigger / triggerValue, 0.4, 2.5)
+        : clamp(sensitivity[0] / 60, 0.6, 1.6);
     return {
       d3: d3 * k,
       d6: d6 * k,
       roc3: roc3 * k,
     };
-  }, [d3, d6, roc3, sensitivity]);
+  }, [d3, d6, roc3, sensitivity, triggerDeltaInHg]);
 
   const risk = useMemo(() => riskFromDeltas(adjusted), [adjusted]);
   const forecastDeltas = useMemo(() => computeForecastDeltas(forecastSeries), [forecastSeries]);
@@ -823,6 +885,17 @@ const stationCaption = useMemo(() => {
         : forecastPrimaryDelta < 0
           ? "Falling pressure often correlates with headaches."
           : "Rising pressure may bring relief for some people.";
+
+  const triggerEvent = useMemo(
+    () => findForecastTrigger(forecastSeries, triggerDeltaInHg[0]),
+    [forecastSeries, triggerDeltaInHg]
+  );
+  const triggerNote = triggerEvent
+    ? `Forecast calls for a pressure shift ${triggerEvent.kind} your trigger (~${round(
+        triggerDeltaInHg[0],
+        2
+      )} inHg) in the next ${triggerEvent.hours} hours.`
+    : "No forecast trigger events detected in the next 12 hours.";
 
   const last = observedRange[observedRange.length - 1];
 
@@ -1038,7 +1111,40 @@ const stationCaption = useMemo(() => {
                   className="max-w-sm"
                   style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
                 >
-                  Demo knob: scales deltas and rate before risk scoring. Real use should tune thresholds instead.
+                  Demo knob: scales deltas and rate before risk scoring. A trigger delta override will take priority.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="flex items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                  >
+                    <div className="text-xs">
+                      <div style={{ color: "var(--muted)" }}>Trigger delta</div>
+                      <div className="font-semibold" style={{ color: "var(--text)" }}>
+                        {triggerDeltaInHg[0].toFixed(2)} inHg
+                      </div>
+                    </div>
+                    <div className="w-36">
+                      <Slider
+                        value={triggerDeltaInHg}
+                        onValueChange={setTriggerDeltaInHg}
+                        min={0.02}
+                        max={0.2}
+                        step={0.01}
+                      />
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="max-w-sm"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                >
+                  Personal trigger threshold in inHg. Overrides the sensitivity dial for risk scaling.
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1295,6 +1401,9 @@ const stationCaption = useMemo(() => {
                 </div>
                 <div className="text-xs" style={{ color: "var(--muted)" }}>
                   Risk hint: {forecastHint}
+                </div>
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  {triggerNote}
                 </div>
               </CardContent>
             </Card>
