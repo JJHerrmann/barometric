@@ -175,6 +175,19 @@ type Reading = {
   wind_mph: number;
 };
 
+type MigraineEventType = "onset" | "meds";
+
+type MigraineEvent = {
+  id: string;
+  type: MigraineEventType;
+  at: string;
+  station: string;
+  pressure_inhg: number;
+  delta3h: number;
+  delta6h: number;
+  notes?: string;
+};
+
 type HistoryPoint = {
   t: string;
   pressure_inhg: number;
@@ -375,6 +388,44 @@ function buildForecastSeries(points: ForecastPoint[], startIndex: number, fallba
   }));
 }
 
+const EVENT_KEY = "rook.migraine.events.v1";
+
+function loadEvents(): MigraineEvent[] {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return [];
+    const raw = window.localStorage.getItem(EVENT_KEY);
+    return raw ? (JSON.parse(raw) as MigraineEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveEvents(events: MigraineEvent[]) {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    window.localStorage.setItem(EVENT_KEY, JSON.stringify(events));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function makeEventId() {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+  } catch {}
+  return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatLocalTimestamp(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+// Future: consider IndexedDB, pain scale (1-10), optional notes, and export merge with pressure history.
+
 function MetricPill({
   label,
   value,
@@ -521,6 +572,7 @@ function normalizeStationId(raw: string) {
 
 export default function BarometricDashboard() {
   const [range, setRange] = useState<"6h" | "12h" | "24h">("24h");
+  const [events, setEvents] = useState<MigraineEvent[]>([]);
 
   type StationLoadState = "idle" | "loading" | "ok" | "error";
   const [stationLoadState, setStationLoadState] = useState<StationLoadState>("idle");
@@ -672,9 +724,13 @@ const stationCaption = useMemo(() => {
   }
 
   useEffect(() => {
-  void applyStation("KGSO");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    void applyStation("KGSO");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    setEvents(loadEvents());
+  }, []);
 
   const [sensitivity, setSensitivity] = useState<number[]>([60]);
 
@@ -775,6 +831,7 @@ const stationCaption = useMemo(() => {
   const liveHumidity = liveObs?.humidity ?? last.humidity;
 
   const nowLabel = observedRange[observedRange.length - 1]?.label;
+  const nowT = observedRange[observedRange.length - 1]?.t;
 
   const tempDisplay = fmtDualTemp(liveTempF);
   const pressureDisplay = fmtDualPressure(livePressure);
@@ -784,6 +841,46 @@ const stationCaption = useMemo(() => {
       ? `As of ${nowLabel}`
       : null;
 
+  function logEvent(type: MigraineEventType) {
+    const entry: MigraineEvent = {
+      id: makeEventId(),
+      type,
+      at: new Date().toISOString(),
+      station: stationId,
+      pressure_inhg: livePressure,
+      delta3h: d3,
+      delta6h: d6,
+    };
+
+    const next = [...events, entry];
+    setEvents(next);
+    saveEvents(next);
+  }
+
+  function exportEventsCsv() {
+    if (events.length === 0) return;
+    const rows = [
+      ["timestamp", "event_type", "station", "pressure_inhg", "delta_3h", "delta_6h"],
+      ...events.map((event) => [
+        event.at,
+        event.type,
+        event.station,
+        round(event.pressure_inhg, 3).toString(),
+        round(event.delta3h, 3).toString(),
+        round(event.delta6h, 3).toString(),
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "migraine-log.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const eventDots = useMemo(() => {
     const onsetT = observedRange[Math.max(0, observedRange.length - 9)]?.t;
     const medsT = observedRange[Math.max(0, observedRange.length - 7)]?.t;
@@ -792,6 +889,8 @@ const stationCaption = useMemo(() => {
       { t: medsT, kind: "med" as const, label: "Meds" },
     ].filter((e) => typeof e.t === "number");
   }, [observedRange]);
+
+  const recentEvents = useMemo(() => events.slice(-5).reverse(), [events]);
 
   return (
     <div
@@ -882,13 +981,22 @@ const stationCaption = useMemo(() => {
                 className="rounded-2xl border"
                 style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
               >
-                <TabsTrigger value="6h" className="rounded-xl">
+                <TabsTrigger
+                  value="6h"
+                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
+                >
                   6h
                 </TabsTrigger>
-                <TabsTrigger value="12h" className="rounded-xl">
+                <TabsTrigger
+                  value="12h"
+                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
+                >
                   12h
                 </TabsTrigger>
-                <TabsTrigger value="24h" className="rounded-xl">
+                <TabsTrigger
+                  value="24h"
+                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
+                >
                   24h
                 </TabsTrigger>
               </TabsList>
@@ -1029,6 +1137,9 @@ const stationCaption = useMemo(() => {
                   </div>
                 </div>
                 <div className="mb-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                  Viewing: Last {range === "6h" ? "6" : range === "12h" ? "12" : "24"} hours
+                </div>
+                <div className="mb-2 text-[11px]" style={{ color: "var(--muted)" }}>
                   Forecast values are estimates and may change.
                 </div>
 
@@ -1036,9 +1147,15 @@ const stationCaption = useMemo(() => {
                   <LineChart data={chartSeries} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
                     <XAxis
-                      dataKey="label"
+                      dataKey="t"
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
                       tick={{ fontSize: 12, fill: "var(--muted)" }}
                       interval="preserveStartEnd"
+                      tickFormatter={(t: number) => {
+                        const point = chartSeries.find((p) => p.t === t);
+                        return point ? point.label : "";
+                      }}
                     />
                     <YAxis
                       domain={["dataMin", "dataMax"]}
@@ -1046,18 +1163,12 @@ const stationCaption = useMemo(() => {
                       width={52}
                       tickFormatter={(v: number) => v.toFixed(2)}
                     />
-                    {nowLabel ? (
+                    {typeof nowT === "number" ? (
                       <ReferenceLine
-                        x={nowLabel}
-                        stroke="rgba(177,147,255,0.85)"
-                        strokeWidth={1.5}
+                        x={nowT}
+                        stroke="rgba(177,147,255,0.9)"
                         strokeDasharray="4 4"
-                        label={{
-                          value: "Now",
-                          position: "top",
-                          fill: "rgba(177,147,255,0.9)",
-                          fontSize: 12,
-                        }}
+                        label={{ value: "Now", position: "top" }}
                       />
                     ) : null}
                     <Line
@@ -1102,6 +1213,7 @@ const stationCaption = useMemo(() => {
                   variant="outline"
                   className="rounded-2xl border hover:opacity-90"
                   style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  onClick={() => logEvent("onset")}
                 >
                   Log migraine onset
                 </Button>
@@ -1109,6 +1221,7 @@ const stationCaption = useMemo(() => {
                   variant="outline"
                   className="rounded-2xl border hover:opacity-90"
                   style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  onClick={() => logEvent("meds")}
                 >
                   Log meds
                 </Button>
@@ -1116,10 +1229,32 @@ const stationCaption = useMemo(() => {
                   variant="outline"
                   className="rounded-2xl border hover:opacity-90"
                   style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  onClick={exportEventsCsv}
                 >
                   Export CSV
                 </Button>
               </div>
+
+              <div
+                className="rounded-2xl border px-3 py-2 text-xs"
+                style={{ background: "var(--surface2)", borderColor: "var(--border)", color: "var(--muted)" }}
+              >
+                <div className="mb-1 text-[11px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+                  Migraine Log
+                </div>
+                {recentEvents.length ? (
+                  <div className="space-y-1">
+                    {recentEvents.map((event) => (
+                      <div key={event.id}>
+                        {formatLocalTimestamp(event.at)} — {event.type} @ {round(event.pressure_inhg, 2)} inHg
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>No events logged yet.</div>
+                )}
+              </div>
+
             </CardContent>
           </Card>
 
