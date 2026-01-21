@@ -1126,7 +1126,7 @@ const stationCaption = useMemo(() => {
               </div>
 
               <div
-                className="h-64 md:h-72 w-full rounded-2xl border backdrop-blur p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                className="h-56 md:h-72 w-full rounded-2xl border backdrop-blur p-3 pb-5 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                 style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
               >
                 <div className="mb-2 flex items-center justify-between">
