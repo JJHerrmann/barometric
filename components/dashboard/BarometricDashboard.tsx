@@ -110,7 +110,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import PreparationTools from "@/components/PreparationTools";
 import {
@@ -1200,31 +1199,27 @@ const stationCaption = useMemo(() => {
               </Button>
             </div>
 
-            <Tabs value={range} onValueChange={(v) => setRange(v as typeof range)}>
-              <TabsList
-                className="rounded-2xl border"
-                style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
-              >
-                <TabsTrigger
-                  value="6h"
-                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
+            <div
+              className="inline-flex h-9 items-center justify-center rounded-2xl border p-1"
+              style={{ background: "var(--surface2)", borderColor: "var(--border)" }}
+              role="group"
+              aria-label="Pressure history range"
+            >
+              {(["6h", "12h", "24h"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={range === option}
+                  onClick={() => setRange(option)}
+                  className="inline-flex items-center justify-center rounded-xl px-3 py-1 text-xs font-medium"
+                  style={range === option
+                    ? { background: "var(--surface)", color: "var(--text)", boxShadow: "0 0 0 1px var(--border)" }
+                    : { color: "var(--muted)" }}
                 >
-                  6h
-                </TabsTrigger>
-                <TabsTrigger
-                  value="12h"
-                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
-                >
-                  12h
-                </TabsTrigger>
-                <TabsTrigger
-                  value="24h"
-                  className="rounded-xl text-xs text-[var(--muted)] data-[state=active]:bg-[var(--surface)] data-[state=active]:text-[var(--text)] data-[state=active]:font-semibold data-[state=active]:ring-1 data-[state=active]:ring-[var(--border)]"
-                >
-                  24h
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+                  {option}
+                </button>
+              ))}
+            </div>
 
             <div
               className="flex items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
@@ -1253,7 +1248,7 @@ const stationCaption = useMemo(() => {
                       </div>
                     </div>
                     <div className="w-36">
-                      <Slider value={sensitivity} onValueChange={setSensitivity} min={20} max={100} step={1} />
+                      <Slider aria-label="Migraine risk sensitivity" value={sensitivity} onValueChange={setSensitivity} min={20} max={100} step={1} />
                     </div>
                   </div>
                 </TooltipTrigger>
@@ -1281,6 +1276,7 @@ const stationCaption = useMemo(() => {
                     </div>
                     <div className="w-36">
                       <Slider
+                        aria-label="Trigger pressure delta"
                         value={triggerDeltaInHg}
                         onValueChange={setTriggerDeltaInHg}
                         min={0.02}
