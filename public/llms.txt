@@ -1,0 +1,13 @@
+# Barometer.Rook.Works
+
+Barometer.Rook.Works is a free dashboard for viewing atmospheric pressure trends and recording personal migraine observations locally in a browser. It is an awareness and pattern-tracking tool, not medical advice, diagnosis, prediction, or treatment.
+
+## Primary pages
+
+- [Dashboard](https://barometer.rook.works/): View station pressure, recent changes, and personal observations.
+- [Tracker guide](https://barometer.rook.works/migraine-pressure-tracker): How to use and interpret the tracker.
+- [FAQ](https://barometer.rook.works/faq): Data sources, privacy, logging, and limitations.
+
+Pressure observations come from NOAA METAR feeds, with short-term forecast context from Open-Meteo. Personal event data remains in the user's browser unless the user exports it.
+
+Use https://barometer.rook.works as the canonical site, not its vercel.app deployment hostname.

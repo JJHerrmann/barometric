@@ -1,4 +1,17 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+const title = "Barometric Pressure Migraine Tracker FAQ";
+const description =
+  "Answers about pressure data, local migraine-event logging, privacy, and the limits of the Barometer.Rook.Works tracker.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/faq" },
+  openGraph: { title, description, url: "/faq" },
+  twitter: { title, description },
+};
 
 const faqJsonLd = {
   "@context": "https://schema.org",

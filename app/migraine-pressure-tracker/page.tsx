@@ -1,4 +1,21 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+const title = "How to Track Barometric Pressure for Migraine Patterns";
+const description =
+  "Learn how to use the Barometer.Rook.Works pressure tracker to compare atmospheric changes with your personal migraine observations.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "/migraine-pressure-tracker" },
+  openGraph: {
+    title,
+    description,
+    url: "/migraine-pressure-tracker",
+  },
+  twitter: { title, description },
+};
 
 export default function MigrainePressureTrackerPage() {
   return (

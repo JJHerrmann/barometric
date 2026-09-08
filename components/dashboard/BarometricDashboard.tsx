@@ -1163,10 +1163,12 @@ const stationCaption = useMemo(() => {
               className="flex flex-wrap items-center gap-2 rounded-2xl border backdrop-blur px-3 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)]"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >
-              <div className="text-xs" style={{ color: "var(--muted)" }}>
+              <label htmlFor="station-select" className="text-xs" style={{ color: "var(--muted)" }}>
                 Station
-              </div>
+              </label>
               <select
+                id="station-select"
+                aria-label="Weather station"
                 value={stationId}
                 onChange={(e) => void applyStation(e.target.value)}
                 className="h-8 rounded-xl border px-2 text-xs outline-none"
@@ -1180,6 +1182,7 @@ const stationCaption = useMemo(() => {
               </select>
               <div className="h-5 w-px" style={{ background: "var(--border)" }} />
               <input
+                aria-label="Custom ICAO weather station"
                 value={customStation}
                 onChange={(e) => setCustomStation(e.target.value)}
                 placeholder="Custom ICAO (e.g., KAVL)"
