@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 
 const siteTitle = "Barometric Pressure Migraine Tracker | Barometer.Rook.Works";
 const siteDescription =
@@ -52,6 +53,13 @@ export default function RootLayout({
       <body className="min-h-screen bg-black text-slate-100">
         {children}
         <Analytics />
+        {/* Cloudflare Web Analytics */}
+        <Script
+          type="module"
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token":"09f1ce1c2fae46a796a951a6a8edd5ee"}'
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
